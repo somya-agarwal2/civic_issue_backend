@@ -1,56 +1,53 @@
 package com.example.civic_issue.Controller;
 
-import com.example.civic_issue.Service.AuthService;
-import com.example.civic_issue.dto.AuthResponse;
-import com.example.civic_issue.dto.ForgotPasswordRequest;
-import com.example.civic_issue.dto.LoginRequest;
-import com.example.civic_issue.dto.SignupRequest;
+import com.example.civic_issue.Service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
+    private OtpService otpService;
 
-    @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequest req) {
-        try {
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
+        String phoneNumber = body.get("phoneNumber");
 
-            if (req.password() == null || req.confirmpassword() == null
-                    || !req.password().equals(req.confirmpassword())) {
-                return ResponseEntity.badRequest().body("Passwords do not match");
-            }
-            authService.signup(req);
-            return ResponseEntity.ok("User registered successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        if (!phoneNumber.startsWith("+")) {
+            phoneNumber = "+91" + phoneNumber; // Add country code
         }
+        System.out.println("Sending OTP to: " + phoneNumber);
+
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("Phone number is required");
+        }
+
+        otpService.generateAndSendOtp(phoneNumber);
+        return ResponseEntity.ok("OTP sent successfully");
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req) {
-        AuthResponse resp = authService.login(req);
-        return ResponseEntity.ok(resp);
-    }
-
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
-        try {
-            if (!req.newPassword().equals(req.confirmPassword())) {
-                return ResponseEntity.badRequest().body("Passwords do not match");
-            }
-            authService.forgotPassword(req);
-            return ResponseEntity.ok("Password updated successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestBody Map<String, String> body) {
+        String phoneNumber = body.get("phoneNumber");
+        String otpCode = body.get("otpCode");
+        if (!phoneNumber.startsWith("+")) {
+            phoneNumber = "+91" + phoneNumber; // Add country code
         }
+        String token = otpService.verifyOtpAndGetToken(phoneNumber, otpCode);
+
+        if (token != null) {
+            // Return JWT token to client
+            return ResponseEntity.ok(token);
+        }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired OTP");
     }
 }
-

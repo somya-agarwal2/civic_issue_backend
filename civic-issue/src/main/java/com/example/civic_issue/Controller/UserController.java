@@ -1,76 +1,82 @@
 package com.example.civic_issue.Controller;
 
-import com.example.civic_issue.dto.UserProfileDto;
 import com.example.civic_issue.Model.User;
+import com.example.civic_issue.Service.LocationService;
+import com.example.civic_issue.dto.LocationRequest;
+import com.example.civic_issue.dto.LocationResponse;
+import com.example.civic_issue.enums.Role;
 import com.example.civic_issue.repo.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.civic_issue.security.JwtUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/api/users")  // ✅ use plural consistently
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
 public class UserController {
 
-    private final String UPLOAD_DIR = "uploads/";
+    private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final LocationService locationService;
 
-    @Autowired
-    private UserRepository userRepository;
+    @PostMapping("/update-location")
+    public ResponseEntity<LocationResponse> updateLocation(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody LocationRequest locationRequest) {
 
+        String token = authHeader.substring(7);
+        String phoneNumber = jwtUtil.extractPhoneNumber(token);
 
-    // ✅ Add new user
-    @PostMapping("/add")
-    public User addUser(@RequestBody User user) {
-        return userRepository.save(user);
-    }
-
-    // ✅ Get all users
-    @GetMapping
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-
-    // ✅ Get user by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return ResponseEntity.ok(user);
-    }
-
-    // ✅ Upload / Skip Profile Picture
-    @PostMapping("/{id}/uploadPhoto")
-    public ResponseEntity<?> uploadPhoto(
-            @PathVariable Long id,
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            @RequestParam(value = "skip", required = false, defaultValue = "false") boolean skip
-    ) throws IOException {
-
-        User user = userRepository.findById(id)
+        User user = userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (skip) {
-            return ResponseEntity.ok(user); // keep old photo
+        if(user.getRole() != Role.CITIZEN){
+            return ResponseEntity.status(403).body(null);
         }
 
-        if (file != null && !file.isEmpty()) {
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            File dest = new File(UPLOAD_DIR + fileName);
-            file.transferTo(dest);
+        // Update lat/lng
+        user.setLatitude(locationRequest.getLatitude());
+        user.setLongitude(locationRequest.getLongitude());
 
-            user.setPhotoUrl("/uploads/" + fileName);
-            userRepository.save(user);
+        // Get human-readable address
+        String address = locationService.getAddressFromCoordinates(
+                locationRequest.getLatitude(),
+                locationRequest.getLongitude()
+        );
+        user.setAddress(address);
+        user.setLastLocationUpdate(LocalDateTime.now());
 
-            return ResponseEntity.ok(user);
-        }
+        userRepository.save(user);
 
-        return ResponseEntity.badRequest().body("No file uploaded and skip not set");
+        // Return DTO instead of string
+        return ResponseEntity.ok(
+                new LocationResponse(
+                        user.getLatitude(),
+                        user.getLongitude(),
+                        user.getAddress(),
+                        user.getLastLocationUpdate()
+                )
+        );
+    }
+
+    @GetMapping("/my-location")
+    public ResponseEntity<LocationResponse> getMyLocation(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.substring(7);
+        String phoneNumber = jwtUtil.extractPhoneNumber(token);
+
+        User user = userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return ResponseEntity.ok(
+                new LocationResponse(
+                        user.getLatitude(),
+                        user.getLongitude(),
+                        user.getAddress(),
+                        user.getLastLocationUpdate()
+                )
+        );
     }
 }
