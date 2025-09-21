@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor

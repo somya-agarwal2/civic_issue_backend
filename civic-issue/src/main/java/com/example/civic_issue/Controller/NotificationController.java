@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+
 public class NotificationController {
 
     private final UserRepository userRepository;

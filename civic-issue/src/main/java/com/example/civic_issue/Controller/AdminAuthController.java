@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor

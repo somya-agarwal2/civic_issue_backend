@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import java.util.Map;
 
 
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/admin/departments")
 @RequiredArgsConstructor

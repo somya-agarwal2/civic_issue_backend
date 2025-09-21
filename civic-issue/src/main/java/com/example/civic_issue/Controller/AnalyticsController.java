@@ -16,7 +16,7 @@ import java.time.Month;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
