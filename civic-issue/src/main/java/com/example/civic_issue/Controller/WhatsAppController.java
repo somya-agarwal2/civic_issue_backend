@@ -39,7 +39,11 @@ public class WhatsAppController {
         String latitude = request.getParameter("Latitude");
         String longitude = request.getParameter("Longitude");
         String mediaUrl = request.getParameter("MediaUrl0");
-
+        System.out.println("Incoming WhatsApp message:");
+        System.out.println("From: " + from);
+        System.out.println("Body: " + msg);
+        System.out.println("Latitude: " + latitude + ", Longitude: " + longitude);
+        System.out.println("MediaUrl0: " + mediaUrl);
         Optional<User> optionalUser = userRepository.findByPhoneNumber(from);
         User user = optionalUser.orElseGet(() -> User.builder()
                 .phoneNumber(from)
