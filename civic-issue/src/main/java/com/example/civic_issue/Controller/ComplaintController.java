@@ -24,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 
+
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/complaints")
 @RequiredArgsConstructor
