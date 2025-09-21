@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,14 +23,6 @@ public class ComplaintService {
      * - AI-based priority
      * - Due date calculation
      * - Status set to PENDING
-     *
-     * @param user        The citizen filing the complaint
-     * @param title       Complaint title
-     * @param description Complaint description
-     * @param category    Complaint category
-     * @param photoUrl    Optional photo URL
-     * @param voiceUrl    Optional voice URL
-     * @return Saved Complaint
      */
     public Complaint createComplaint(User user, String title, String description, String category, String photoUrl, String voiceUrl) {
 
@@ -63,5 +56,12 @@ public class ComplaintService {
 
         // Save and return
         return complaintRepository.save(complaint);
+    }
+
+    /**
+     * Fetch complaint by ID
+     */
+    public Optional<Complaint> getComplaintById(Long id) {
+        return complaintRepository.findById(id);
     }
 }
