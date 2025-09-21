@@ -90,7 +90,7 @@ public class AuthController {
 
     private String normalizePhoneNumber(String phoneNumber) {
         phoneNumber = phoneNumber.trim();
-      
+
         return phoneNumber;
     }
 
