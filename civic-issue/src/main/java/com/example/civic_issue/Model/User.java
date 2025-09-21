@@ -7,9 +7,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 @Entity
 @Table(name = "users")
 @Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -54,4 +57,11 @@ public class User {
     @OneToMany(mappedBy = "assignedTo")
     private List<Complaint> assignedComplaints;
 
+    // ✅ New fields
+    private String email;           // Operator/Head email
+    private String specialization;  // Operator specialization
+    private String fullName;        // Optional: store name of the user (operator/head)
+    private String addressDetail;   // Optional: alternate address field if needed
+
+    // Add more fields here as required by frontend
 }

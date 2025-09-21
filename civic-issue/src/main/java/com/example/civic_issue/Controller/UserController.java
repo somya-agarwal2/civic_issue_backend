@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 
-
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/users")
@@ -24,36 +23,31 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final LocationService locationService;
 
+    // ================== UPDATE LOCATION ==================
     @PostMapping("/update-location")
     public ResponseEntity<LocationResponse> updateLocation(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody LocationRequest locationRequest) {
 
-        String token = authHeader.substring(7);
-        String phoneNumber = jwtUtil.extractPhoneNumber(token);
+        User user = getCitizenFromAuthHeader(authHeader);
 
-        User user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if(user.getRole() != Role.CITIZEN){
-            return ResponseEntity.status(403).body(null);
+        if(locationRequest.getLatitude() == null || locationRequest.getLongitude() == null){
+            return ResponseEntity.badRequest().body(null);
         }
 
-        // Update lat/lng
         user.setLatitude(locationRequest.getLatitude());
         user.setLongitude(locationRequest.getLongitude());
 
-        // Get human-readable address
+        // Resolve human-readable address safely
         String address = locationService.getAddressFromCoordinates(
                 locationRequest.getLatitude(),
                 locationRequest.getLongitude()
         );
-        user.setAddress(address);
+        user.setAddress(address != null ? address : "Unknown location");
         user.setLastLocationUpdate(LocalDateTime.now());
 
         userRepository.save(user);
 
-        // Return DTO instead of string
         return ResponseEntity.ok(
                 new LocationResponse(
                         user.getLatitude(),
@@ -64,13 +58,10 @@ public class UserController {
         );
     }
 
+    // ================== GET MY LOCATION ==================
     @GetMapping("/my-location")
     public ResponseEntity<LocationResponse> getMyLocation(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.substring(7);
-        String phoneNumber = jwtUtil.extractPhoneNumber(token);
-
-        User user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getCitizenFromAuthHeader(authHeader);
 
         return ResponseEntity.ok(
                 new LocationResponse(
@@ -80,5 +71,28 @@ public class UserController {
                         user.getLastLocationUpdate()
                 )
         );
+    }
+
+    // ================== HELPER: GET CITIZEN FROM TOKEN ==================
+    private User getCitizenFromAuthHeader(String authHeader){
+        User user = getUserFromAuthHeader(authHeader);
+
+        if(user.getRole() != Role.CITIZEN){
+            throw new RuntimeException("Only citizens can access this endpoint");
+        }
+        return user;
+    }
+
+    // ================== HELPER: GET USER FROM TOKEN ==================
+    private User getUserFromAuthHeader(String authHeader){
+        if(authHeader == null || !authHeader.startsWith("Bearer ")){
+            throw new RuntimeException("Invalid Authorization header");
+        }
+
+        String token = authHeader.substring(7);
+        String phoneNumber = jwtUtil.extractPhoneNumber(token);
+
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

@@ -6,7 +6,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "otp_store")
-@Data               // generates getters, setters, equals, hashCode, toString
+@Data
+
+@Getter
+@Setter // generates getters, setters, equals, hashCode, toString
 @NoArgsConstructor  // generates a no-args constructor (needed by JPA)
 @AllArgsConstructor // generates an all-args constructor
 @Builder            // enables OtpStore.builder() style creation

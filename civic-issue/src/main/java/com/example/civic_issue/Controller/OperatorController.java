@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/department/operators")
@@ -26,7 +25,7 @@ public class OperatorController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // ✅ Head creates operator
+    // ✅ Create Operator
     @PostMapping("/create")
     public ResponseEntity<?> createOperator(
             @RequestHeader("Authorization") String authHeader,
@@ -36,72 +35,46 @@ public class OperatorController {
         User head = userRepository.findByPhoneNumber(phone)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Only department head
         if (head.getRole() != Role.DEPARTMENT_HEAD) {
-            return ResponseEntity.status(403).body("Only department head can create operators");
+            return ResponseEntity.status(403).body(new SimpleResponse(false, "Only department head can create operators"));
         }
 
-        // Create operator
         User operator = User.builder()
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.OPERATOR)
-                .department(head.getDepartment()) // operator in same department
+                .department(head.getDepartment())
                 .createdBy(head)
+                .email(request.getEmail())
+                .specialization(request.getSpecialization())
                 .build();
 
         userRepository.save(operator);
-        return ResponseEntity.ok("Operator created successfully");
+
+        return ResponseEntity.ok(new SimpleResponse(true, "Operator created successfully"));
     }
 
-    // ✅ List operators in the department
-    @GetMapping("/list")
-    public ResponseEntity<?> listOperators(@RequestHeader("Authorization") String authHeader) {
+    // ✅ List operators of logged-in department
+    @GetMapping("/my-department")
+    public ResponseEntity<?> listOperatorsOfMyDepartment(
+            @RequestHeader("Authorization") String authHeader) {
+
         String phone = jwtUtil.extractPhoneNumber(authHeader.substring(7));
         User head = userRepository.findByPhoneNumber(phone)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (head.getRole() != Role.DEPARTMENT_HEAD) {
-            return ResponseEntity.status(403).body("Access denied");
+        if (head.getRole() != Role.DEPARTMENT_HEAD || head.getDepartment() == null) {
+            return ResponseEntity.status(403).body(new SimpleResponse(false, "Access denied"));
         }
 
-        List<User> operators = userRepository.findByRoleAndDepartment_Id(Role.OPERATOR, head.getDepartment().getId());
-        return ResponseEntity.ok(operators);
-    }
-
-    @GetMapping("/operators/my-department")
-    public ResponseEntity<List<OperatorResponse>> listOperatorsOfMyDepartment(
-            @RequestHeader("Authorization") String authHeader) {
-
-        // 1️⃣ Extract logged-in user
-        String phone = jwtUtil.extractPhoneNumber(authHeader.substring(7));
-        User loggedUser = userRepository.findByPhoneNumber(phone)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // 2️⃣ Allow only Department Heads
-        if (loggedUser.getRole() != Role.DEPARTMENT_HEAD) {
-            return ResponseEntity.status(403).body(null);
-        }
-
-        // 3️⃣ Get department
-        Department department = loggedUser.getDepartment();
-        if (department == null) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-        // 4️⃣ Fetch operators in this department
-        List<OperatorResponse> response = userRepository.findAll().stream()
-                .filter(user -> user.getRole() == Role.OPERATOR &&
-                        user.getDepartment() != null &&
-                        user.getDepartment().getId().equals(department.getId()))
-                .map(user -> new OperatorResponse(
-                        user.getId(),
-                        user.getPhoneNumber(),
-                        department.getName()
-                ))
-                .collect(Collectors.toList());
+        List<OperatorResponse> response = userRepository.findByRoleAndDepartment_Id(Role.OPERATOR, head.getDepartment().getId())
+                .stream()
+                .map(user -> new OperatorResponse(user.getId(), user.getPhoneNumber(), head.getDepartment().getName()))
+                .toList();
 
         return ResponseEntity.ok(response);
     }
 
+    // ================== RESPONSE RECORD ==================
+    private record SimpleResponse(boolean success, String message) {}
 }

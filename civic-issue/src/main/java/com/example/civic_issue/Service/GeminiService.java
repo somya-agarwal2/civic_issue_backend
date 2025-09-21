@@ -51,6 +51,9 @@ public class GeminiService {
         }
     }
 
+    /**
+     * Builds the JSON payload for Gemini API.
+     */
     private String buildPrompt(String title, String description, String photoUrl) {
         String text = title + " " + description;
         if (photoUrl != null && !photoUrl.isBlank()) {
@@ -70,6 +73,9 @@ public class GeminiService {
         return json.toString();
     }
 
+    /**
+     * Parses the Gemini API response to map it to Priority enum.
+     */
     private Priority parseResponse(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) return Priority.LOW;
 
@@ -80,11 +86,11 @@ public class GeminiService {
             if (predictions != null && predictions.length() > 0) {
                 String priorityText = predictions.getString(0).trim().toUpperCase();
 
-                switch (priorityText) {
-                    case "HIGH": return Priority.HIGH;
-                    case "MEDIUM": return Priority.MEDIUM;
-                    default: return Priority.LOW;
-                }
+                return switch (priorityText) {
+                    case "HIGH" -> Priority.HIGH;
+                    case "MEDIUM" -> Priority.MEDIUM;
+                    default -> Priority.LOW;
+                };
             }
         } catch (Exception e) {
             e.printStackTrace();

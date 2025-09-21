@@ -23,18 +23,30 @@ public class AdminDataInitializer implements CommandLineRunner {
     @Value("${superadmin.password}")
     private String superAdminPassword;
 
+    @Value("${superadmin.name:Super Admin}") // fallback default
+    private String superAdminName;
+
+    @Value("${superadmin.email:admin@civicflow.gov}") // fallback default
+    private String superAdminEmail;
+
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         // Check if super admin already exists
         if (userRepository.findByPhoneNumber(superAdminPhone).isEmpty()) {
             User superAdmin = new User();
             superAdmin.setPhoneNumber(superAdminPhone);
             superAdmin.setRole(Role.SUPER_ADMIN);
             superAdmin.setPassword(passwordEncoder.encode(superAdminPassword)); // hashed password
+
+            // ✅ Added missing profile fields
+            superAdmin.setFullName(superAdminName);
+            superAdmin.setEmail(superAdminEmail);
+            superAdmin.setDepartment(null); // SUPER_ADMIN has no department
+
             userRepository.save(superAdmin);
         }
 
-        // You can similarly add department heads or operators
+        // TODO: Optionally seed Department Heads and Operators if needed
+        // This would make role-based testing easier
     }
 }
-

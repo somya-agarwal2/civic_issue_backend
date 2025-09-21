@@ -1,4 +1,3 @@
-
 package com.example.civic_issue.Service;
 
 import com.example.civic_issue.Model.User;
@@ -8,8 +7,6 @@ import com.example.civic_issue.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class DepartmentAssignmentService {
@@ -17,17 +14,28 @@ public class DepartmentAssignmentService {
     private final UserRepository userRepository;
 
     /**
-     * Get the department head assigned for the given category.
+     * Returns the department head assigned for the given department name.
+     *
+     * @param departmentName Name of the department
+     * @return User object of department head, or null if none found
      */
     public User getDepartmentHeadForCategory(String departmentName) {
         if (departmentName == null) return null;
+
         return userRepository
                 .findByRoleAndDepartment_Name(Role.DEPARTMENT_HEAD, departmentName)
                 .orElse(null);
     }
 
+    /**
+     * Checks if the given category string is valid.
+     *
+     * @param categoryStr Category string
+     * @return true if valid, false otherwise
+     */
     public boolean isValidCategory(String categoryStr) {
         return Category.fromString(categoryStr) != null;
     }
-
 }
+
+

@@ -25,7 +25,8 @@ public class Complaint {
     // Example:
     private String category;  // ✅ Should be String
 
-
+    @ManyToOne
+    private Department department;
 
     private String address;
     private Double latitude;

@@ -55,7 +55,7 @@ public class ComplaintService {
                 .photoUrl(photoUrl)
                 .voiceUrl(voiceUrl)
                 .priority(priority)
-                .status(ComplaintStatus.PENDING) // always pending initially
+                .status(ComplaintStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .dueDate(dueDate)
                 .user(user)

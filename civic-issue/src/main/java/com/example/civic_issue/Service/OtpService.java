@@ -31,7 +31,6 @@ public class OtpService {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Twilio credentials loaded from application.properties
     @Value("${twilio.account.sid}")
     private String ACCOUNT_SID;
 
@@ -41,52 +40,62 @@ public class OtpService {
     @Value("${twilio.phone.number}")
     private String TWILIO_PHONE;
 
+    private static final int OTP_EXPIRY_MINUTES = 5;
+
+    /**
+     * Generates a 6-digit OTP, saves it in DB, and sends via Twilio SMS.
+     */
     public void generateAndSendOtp(String phoneNumber) {
         String otp = String.valueOf(new Random().nextInt(900000) + 100000);
 
-        // clear old otp for this phone
+        // Delete any old OTP for this phone
         otpRepository.deleteByPhoneNumber(phoneNumber);
 
-        // save new otp
+        // Save new OTP
         OtpStore otpEntry = OtpStore.builder()
                 .phoneNumber(phoneNumber)
                 .otpCode(otp)
-                .expiryTime(LocalDateTime.now().plusMinutes(5))
-
+                .expiryTime(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
                 .build();
         otpRepository.save(otpEntry);
 
         // Initialize Twilio and send OTP
         Twilio.init(ACCOUNT_SID, AUTH_TOKEN);
-
         Message.creator(
                 new PhoneNumber(phoneNumber),   // to
-                new PhoneNumber(TWILIO_PHONE), // from (your Twilio number)
+                new PhoneNumber(TWILIO_PHONE), // from (Twilio number)
                 "Your OTP for Civic App is: " + otp
         ).create();
 
-        System.out.println("OTP sent to " + phoneNumber); // optional log
+        System.out.println("OTP sent to " + phoneNumber);
     }
 
+    /**
+     * Verifies OTP and generates a JWT token if valid.
+     */
     @Transactional
     public String verifyOtpAndGetToken(String phoneNumber, String otpCode) {
-        Optional<OtpStore> otpRecord =
-                otpRepository.findByPhoneNumberAndOtpCode(phoneNumber, otpCode);
+        Optional<OtpStore> otpRecord = otpRepository.findByPhoneNumberAndOtpCode(phoneNumber, otpCode);
 
         if (otpRecord.isPresent() && otpRecord.get().getExpiryTime().isAfter(LocalDateTime.now())) {
-            // ensure user exists
+
+            // Ensure user exists, otherwise create as CITIZEN
             userRepository.findByPhoneNumber(phoneNumber)
                     .orElseGet(() -> userRepository.save(
-                            User.builder().phoneNumber(phoneNumber).
-                            role(Role.CITIZEN).build()
+                            User.builder()
+                                    .phoneNumber(phoneNumber)
+                                    .role(Role.CITIZEN)
+                                    .createdAt(LocalDateTime.now())
+                                    .build()
                     ));
 
-            otpRepository.deleteByPhoneNumber(phoneNumber); // clear used otp
+            // Delete used OTP
+            otpRepository.deleteByPhoneNumber(phoneNumber);
 
-            // generate JWT token
+            // Generate JWT token
             return jwtUtil.generateTokenWithRole(phoneNumber, Role.CITIZEN);
         }
 
-        return null; // invalid or expired OTP
+        return null; // Invalid or expired OTP
     }
 }

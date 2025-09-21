@@ -18,5 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Dynamic lookup of department head by role + department name
     Optional<User> findByRoleAndDepartment_Name(Role role, String departmentName);
+    List<User> findByDepartmentIdAndRole(Long departmentId, Role role);
 
 }
