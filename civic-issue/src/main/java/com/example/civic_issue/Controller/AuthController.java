@@ -90,9 +90,7 @@ public class AuthController {
 
     private String normalizePhoneNumber(String phoneNumber) {
         phoneNumber = phoneNumber.trim();
-        if (!phoneNumber.startsWith("+")) {
-            phoneNumber = "+91" + phoneNumber; // default country code
-        }
+      
         return phoneNumber;
     }
 
