@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class ComplaintService {
@@ -18,26 +17,15 @@ public class ComplaintService {
     private final GeminiService geminiService;
     private final ComplaintRepository complaintRepository;
 
-    /**
-     * Handles creating a complaint with:
-     * - AI-based priority
-     * - Due date calculation
-     * - Status set to PENDING
-     */
     public Complaint createComplaint(User user, String title, String description, String category, String photoUrl, String voiceUrl) {
-
-        // Determine priority using AI service
         Priority priority = geminiService.determinePriority(title, description, photoUrl);
 
-        // Calculate due date based on priority
-        LocalDateTime dueDate;
-        switch (priority) {
-            case HIGH -> dueDate = LocalDateTime.now().plusWeeks(1);
-            case MEDIUM -> dueDate = LocalDateTime.now().plusMonths(1);
-            default -> dueDate = LocalDateTime.now().plusMonths(3);
-        }
+        LocalDateTime dueDate = switch (priority) {
+            case HIGH -> LocalDateTime.now().plusWeeks(1);
+            case MEDIUM -> LocalDateTime.now().plusMonths(1);
+            default -> LocalDateTime.now().plusMonths(3);
+        };
 
-        // Build complaint object
         Complaint complaint = Complaint.builder()
                 .title(title)
                 .description(description)
@@ -54,13 +42,17 @@ public class ComplaintService {
                 .user(user)
                 .build();
 
-        // Save and return
         return complaintRepository.save(complaint);
     }
 
-    /**
-     * Fetch complaint by ID
-     */
+    public Complaint saveComplaint(Complaint complaint) {
+        return complaintRepository.save(complaint);
+    }
+
+    public Priority getPriority(String title, String description, String photoUrl) {
+        return geminiService.determinePriority(title, description, photoUrl);
+    }
+
     public Optional<Complaint> getComplaintById(Long id) {
         return complaintRepository.findById(id);
     }
