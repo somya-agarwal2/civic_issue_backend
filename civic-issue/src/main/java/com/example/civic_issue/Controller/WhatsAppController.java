@@ -12,6 +12,9 @@ import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -30,10 +33,10 @@ public class WhatsAppController {
     private final LocationService locationService;
 
     @PostMapping
-    public String receiveMessage(HttpServletRequest request) {
+    public ResponseEntity<String> receiveMessage(HttpServletRequest request) {
         String msg = request.getParameter("Body");
         String rawFrom = request.getParameter("From"); // e.g. whatsapp:+91XXXXXX
-        String phone = rawFrom.replace("whatsapp:", ""); // normalize
+        String phone = rawFrom.replace("whatsapp:", "").trim(); // normalize
         String latitude = request.getParameter("Latitude");
         String longitude = request.getParameter("Longitude");
         String mediaUrl = request.getParameter("MediaUrl0");
@@ -44,26 +47,23 @@ public class WhatsAppController {
         System.out.println("Latitude: " + latitude + ", Longitude: " + longitude);
         System.out.println("MediaUrl0: " + mediaUrl);
 
-        // Ensure user exists
-        User user = userRepository.findByPhoneNumber(phone)
-                .orElseGet(() -> {
-                    User u = User.builder()
-                            .phoneNumber(phone)
-                            .role(Role.CITIZEN)
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    return userRepository.save(u);
-                });
+// Ensure user exists
+        Optional<User> optionalUser = userRepository.findByPhoneNumber(phone);
+        User user = optionalUser.orElseGet(() -> User.builder()
+                .phoneNumber(phone)
+                .role(Role.CITIZEN)
+                .createdAt(LocalDateTime.now())
+                .build());
+        userRepository.save(user);
 
-        // Fetch or create WhatsApp session from DB
+// Fetch or create WhatsApp session from DB and save immediately if new
         WhatsAppSession session = sessionRepository.findById(phone)
-                .orElseGet(() -> {
-                    WhatsAppSession s = WhatsAppSession.builder()
-                            .phoneNumber(phone)
-                            .step("NEW")
-                            .build();
-                    return sessionRepository.save(s); // save immediately
-                });
+                .orElseGet(() -> sessionRepository.save(
+                        WhatsAppSession.builder()
+                                .phoneNumber(phone)
+                                .step("NEW")
+                                .build()
+                ));
 
         MessagingResponse twiml;
 
@@ -75,7 +75,7 @@ public class WhatsAppController {
                     sessionRepository.save(session);
                     twiml = buildMessage(
                             "👋 Welcome to CivicSense!\n" +
-                                    "We've sent an OTP via WhatsApp. Please reply here with the OTP."
+                                    "We've sent an OTP to your phone via SMS. Please reply here with the OTP."
                     );
                 }
 
@@ -98,7 +98,6 @@ public class WhatsAppController {
 
                         session.setStep("ASK_TITLE");
                         sessionRepository.save(session);
-
                         twiml = buildMessage("📝 Please enter the title of your complaint.");
                     } else {
                         twiml = buildMessage("⚠️ Please share your live location to proceed.");
@@ -192,29 +191,25 @@ public class WhatsAppController {
                     );
                 }
 
-                case "DONE" -> {
-                    twiml = buildMessage("👋 Thank you! Your complaint has been submitted. Send any message to start a new complaint.");
-                    session.setStep("NEW"); // reset if user wants to submit again
-                    sessionRepository.save(session);
-                }
-
-                default -> {
-                    twiml = buildMessage("👋 Welcome to CivicSense! Send any message to start.");
-                    session.setStep("NEW");
-                    sessionRepository.save(session);
-                }
+                default -> twiml = buildMessage("👋 Welcome to CivicSense! Please send any message to start.");
             }
         } catch (Exception e) {
             e.printStackTrace();
             twiml = buildMessage("⚠️ Something went wrong. Please try again.");
         }
 
+        String responseXml;
         try {
-            return twiml.toXml();
+            responseXml = twiml.toXml();
         } catch (Exception e) {
             e.printStackTrace();
-            return "<Response><Message>⚠️ Something went wrong. Please try again.</Message></Response>";
+            responseXml = "<Response><Message>⚠️ Something went wrong. Please try again.</Message></Response>";
         }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/xml");
+
+        return new ResponseEntity<>(responseXml, headers, HttpStatus.OK);
     }
 
     private MessagingResponse buildMessage(String text) {
