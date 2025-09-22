@@ -56,14 +56,29 @@ public class WhatsAppController {
                 .build());
         userRepository.save(user);
 
-// Fetch or create WhatsApp session from DB and save immediately if new
-        WhatsAppSession session = sessionRepository.findById(phone)
-                .orElseGet(() -> sessionRepository.save(
-                        WhatsAppSession.builder()
-                                .phoneNumber(phone)
-                                .step("NEW")
-                                .build()
-                ));
+// Reset session if user wants to start fresh
+        WhatsAppSession session;
+        if (msg.equalsIgnoreCase("hi") || msg.equalsIgnoreCase("hello")) {
+            // Delete any previous session
+            sessionRepository.deleteById(phone);
+
+            // Create a fresh session
+            session = sessionRepository.save(
+                    WhatsAppSession.builder()
+                            .phoneNumber(phone)
+                            .step("NEW")
+                            .build()
+            );
+        } else {
+            // Use existing session or create new if none exists
+            session = sessionRepository.findById(phone)
+                    .orElseGet(() -> sessionRepository.save(
+                            WhatsAppSession.builder()
+                                    .phoneNumber(phone)
+                                    .step("NEW")
+                                    .build()
+                    ));
+        }
 
         MessagingResponse twiml;
 
