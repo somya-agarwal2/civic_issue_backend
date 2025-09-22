@@ -85,7 +85,9 @@ public class AdminAuthController {
                     user.getFullName() != null ? user.getFullName() : "Unknown",
                     user.getEmail(),
                     mapRoleToFrontend(user.getRole()),
-                    user.getDepartment() != null ? user.getDepartment().getName() : null
+                    user.getDepartment() != null ? user.getDepartment().getName() : null,
+                    user.getRole() == Role.DEPARTMENT_HEAD && user.getDepartment() != null
+                            ? user.getDepartment().getId():null
             );
 
             return ResponseEntity.ok(userInfo);
