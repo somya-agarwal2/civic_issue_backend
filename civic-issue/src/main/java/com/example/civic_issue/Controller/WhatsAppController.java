@@ -12,6 +12,9 @@ import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -30,10 +33,10 @@ public class WhatsAppController {
     private final LocationService locationService;
 
     @PostMapping
-    public String receiveMessage(HttpServletRequest request) {
+    public ResponseEntity<String> receiveMessage(HttpServletRequest request) {
         String msg = request.getParameter("Body");
         String rawFrom = request.getParameter("From"); // e.g. whatsapp:+91XXXXXX
-        String phone = rawFrom.replace("whatsapp:", ""); // normalize
+        String phone = rawFrom.replace("whatsapp:", "").trim(); // normalize
         String latitude = request.getParameter("Latitude");
         String longitude = request.getParameter("Longitude");
         String mediaUrl = request.getParameter("MediaUrl0");
@@ -93,7 +96,6 @@ public class WhatsAppController {
 
                         session.setStep("ASK_TITLE");
                         sessionRepository.save(session);
-
                         twiml = buildMessage("📝 Please enter the title of your complaint.");
                     } else {
                         twiml = buildMessage("⚠️ Please share your live location to proceed.");
@@ -194,12 +196,18 @@ public class WhatsAppController {
             twiml = buildMessage("⚠️ Something went wrong. Please try again.");
         }
 
+        String responseXml;
         try {
-            return twiml.toXml();
+            responseXml = twiml.toXml();
         } catch (Exception e) {
             e.printStackTrace();
-            return "<Response><Message>⚠️ Something went wrong. Please try again.</Message></Response>";
+            responseXml = "<Response><Message>⚠️ Something went wrong. Please try again.</Message></Response>";
         }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/xml");
+
+        return new ResponseEntity<>(responseXml, headers, HttpStatus.OK);
     }
 
     private MessagingResponse buildMessage(String text) {
