@@ -49,15 +49,18 @@ public class AdminAuthController {
 
         // Build user info for frontend
         LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                user.getId(),
+                user.getId(), // wrap if user.getId() is primitive
                 user.getFullName() != null ? user.getFullName() : "Unknown",
                 user.getEmail(),
                 mapRoleToFrontend(user.getRole()),
                 user.getDepartment() != null ? user.getDepartment().getName() : null,
                 user.getRole() == Role.DEPARTMENT_HEAD && user.getDepartment() != null
-                        ? user.getDepartment().getId()
-                        : null // only send department ID for department head
+                        ? Long.valueOf(user.getDepartment().getId())
+                        : null
         );
+
+
+
 
         LoginResponse response = new LoginResponse(userInfo, token);
         return ResponseEntity.ok(response);
@@ -81,14 +84,18 @@ public class AdminAuthController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                    user.getId(),
+                    user.getId(), // wrap if user.getId() is primitive
                     user.getFullName() != null ? user.getFullName() : "Unknown",
                     user.getEmail(),
                     mapRoleToFrontend(user.getRole()),
                     user.getDepartment() != null ? user.getDepartment().getName() : null,
                     user.getRole() == Role.DEPARTMENT_HEAD && user.getDepartment() != null
-                            ? user.getDepartment().getId():null
+                            ? Long.valueOf(user.getDepartment().getId())
+                            : null
             );
+
+
+
 
             return ResponseEntity.ok(userInfo);
 
