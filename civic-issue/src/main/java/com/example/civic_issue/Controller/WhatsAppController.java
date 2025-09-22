@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.InputStream;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -31,6 +33,7 @@ public class WhatsAppController {
     private final ComplaintService complaintService;
     private final DepartmentAssignmentService departmentAssignmentService;
     private final LocationService locationService;
+    private final WhatsAppCloudinaryService cloudinaryService;
 
     @PostMapping
     public ResponseEntity<String> receiveMessage(HttpServletRequest request) {
@@ -47,16 +50,17 @@ public class WhatsAppController {
         System.out.println("Latitude: " + latitude + ", Longitude: " + longitude);
         System.out.println("MediaUrl0: " + mediaUrl);
 
-// Ensure user exists
-        Optional<User> optionalUser = userRepository.findByPhoneNumber(phone);
-        User user = optionalUser.orElseGet(() -> User.builder()
-                .phoneNumber(phone)
-                .role(Role.CITIZEN)
-                .createdAt(LocalDateTime.now())
-                .build());
-        userRepository.save(user);
+        // Ensure user exists
+        User user = userRepository.findByPhoneNumber(phone)
+                .orElseGet(() -> userRepository.save(
+                        User.builder()
+                                .phoneNumber(phone)
+                                .role(Role.CITIZEN)
+                                .createdAt(LocalDateTime.now())
+                                .build()
+                ));
 
-// Reset session if user wants to start fresh
+        // Reset session if user wants to start fresh
         WhatsAppSession session;
         if (msg.equalsIgnoreCase("hi") || msg.equalsIgnoreCase("hello")) {
             sessionRepository.deleteById(phone);
@@ -71,10 +75,7 @@ public class WhatsAppController {
                             .tempVoiceUrl(null)
                             .build()
             );
-
-
-    } else {
-            // Use existing session or create new if none exists
+        } else {
             session = sessionRepository.findById(phone)
                     .orElseGet(() -> sessionRepository.save(
                             WhatsAppSession.builder()
@@ -165,15 +166,24 @@ public class WhatsAppController {
                 }
 
                 case "ASK_PHOTO" -> {
-                    if (!msg.equalsIgnoreCase("Skip")) session.setTempPhotoUrl(mediaUrl);
+                    if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
+                        InputStream inputStream = new URL(mediaUrl).openStream();
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
+                        session.setTempPhotoUrl(uploadedUrl);
+                    }
                     session.setStep("ASK_VOICE");
                     sessionRepository.save(session);
                     twiml = buildMessage("🎤 You can upload a voice note (optional). Send 'Skip' to continue.");
                 }
 
                 case "ASK_VOICE" -> {
-                    if (!msg.equalsIgnoreCase("Skip")) session.setTempVoiceUrl(mediaUrl);
+                    if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
+                        InputStream inputStream = new URL(mediaUrl).openStream();
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
+                        session.setTempVoiceUrl(uploadedUrl);
+                    }
 
+                    // Save complaint
                     Complaint complaint = Complaint.builder()
                             .title(session.getTempTitle())
                             .description(session.getTempDescription())
@@ -209,6 +219,7 @@ public class WhatsAppController {
                                     "\nPriority: " + complaint.getPriority()
                     );
                 }
+
                 case "DONE" -> {
                     twiml = buildMessage("👋 Your previous complaint has been submitted. Type 'hi' to start a new complaint.");
                 }
@@ -240,3 +251,4 @@ public class WhatsAppController {
         return new MessagingResponse.Builder().message(message).build();
     }
 }
+

@@ -26,7 +26,7 @@ public class GeminiService {
      */
     public Priority determinePriority(String title, String description, String photoUrl) {
         try {
-            // 1️⃣ Build request payload
+            // 1️⃣ Build request payload with explicit instructions
             String requestJson = buildPrompt(title, description, photoUrl);
 
             // 2️⃣ Gemini API endpoint
@@ -41,7 +41,7 @@ public class GeminiService {
             // 4️⃣ Execute POST request
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
-            // 5️⃣ Parse the API response
+            // 5️⃣ Parse API response to Priority
             return parseResponse(response.getBody());
 
         } catch (Exception e) {
@@ -52,17 +52,22 @@ public class GeminiService {
     }
 
     /**
-     * Builds the JSON payload for Gemini API.
+     * Builds the JSON payload for Gemini API with clear classification instructions.
      */
     private String buildPrompt(String title, String description, String photoUrl) {
-        String text = title + " " + description;
+        StringBuilder text = new StringBuilder();
+        text.append("You are an AI assistant that classifies civic complaints into HIGH, MEDIUM, or LOW priority.\n");
+        text.append("Classify strictly into one of these labels.\n\n");
+        text.append("Complaint details:\n");
+        text.append("Title: ").append(title).append("\n");
+        text.append("Description: ").append(description).append("\n");
         if (photoUrl != null && !photoUrl.isBlank()) {
-            text += " Photo URL: " + photoUrl;
+            text.append("Photo URL: ").append(photoUrl).append("\n");
         }
+        text.append("\nAnswer only with HIGH, MEDIUM, or LOW.");
 
         JSONObject instance = new JSONObject();
-        instance.put("prompt", text);
-        instance.put("parameters", new JSONObject().put("temperature", 0.0));
+        instance.put("content", text.toString());  // Gemini expects 'content' for text
 
         JSONArray instances = new JSONArray();
         instances.put(instance);
@@ -74,7 +79,7 @@ public class GeminiService {
     }
 
     /**
-     * Parses the Gemini API response to map it to Priority enum.
+     * Parses the Gemini API response and maps it to Priority enum.
      */
     private Priority parseResponse(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) return Priority.LOW;
@@ -84,11 +89,13 @@ public class GeminiService {
             JSONArray predictions = json.optJSONArray("predictions");
 
             if (predictions != null && predictions.length() > 0) {
-                String priorityText = predictions.getString(0).trim().toUpperCase();
+                JSONObject first = predictions.getJSONObject(0);
+                String priorityText = first.optString("content", "").trim().toUpperCase();
 
                 return switch (priorityText) {
                     case "HIGH" -> Priority.HIGH;
                     case "MEDIUM" -> Priority.MEDIUM;
+                    case "LOW" -> Priority.LOW;
                     default -> Priority.LOW;
                 };
             }
