@@ -3,10 +3,7 @@ package com.example.civic_issue.Controller;
 import com.example.civic_issue.Model.Complaint;
 import com.example.civic_issue.Model.User;
 import com.example.civic_issue.Model.WhatsAppSession;
-import com.example.civic_issue.Service.ComplaintService;
-import com.example.civic_issue.Service.DepartmentAssignmentService;
-import com.example.civic_issue.Service.LocationService;
-import com.example.civic_issue.Service.OtpService;
+import com.example.civic_issue.Service.*;
 import com.example.civic_issue.enums.Role;
 import com.example.civic_issue.repo.UserRepository;
 import com.example.civic_issue.repo.WhatsAppSessionRepository;
@@ -27,7 +24,7 @@ public class WhatsAppController {
 
     private final UserRepository userRepository;
     private final WhatsAppSessionRepository sessionRepository;
-    private final OtpService otpService;
+    private final WhatsAppOtpService whatsAppOtpService;
     private final ComplaintService complaintService;
     private final DepartmentAssignmentService departmentAssignmentService;
     private final LocationService locationService;
@@ -35,46 +32,50 @@ public class WhatsAppController {
     @PostMapping
     public String receiveMessage(HttpServletRequest request) {
         String msg = request.getParameter("Body");
-        String from = request.getParameter("From"); // whatsapp:+91XXXXXX
+        String rawFrom = request.getParameter("From"); // e.g. whatsapp:+91XXXXXX
+        String phone = rawFrom.replace("whatsapp:", ""); // normalize
         String latitude = request.getParameter("Latitude");
         String longitude = request.getParameter("Longitude");
         String mediaUrl = request.getParameter("MediaUrl0");
+
         System.out.println("Incoming WhatsApp message:");
-        System.out.println("From: " + from);
+        System.out.println("From: " + rawFrom);
         System.out.println("Body: " + msg);
         System.out.println("Latitude: " + latitude + ", Longitude: " + longitude);
         System.out.println("MediaUrl0: " + mediaUrl);
-        Optional<User> optionalUser = userRepository.findByPhoneNumber(from);
+
+        // Ensure user exists
+        Optional<User> optionalUser = userRepository.findByPhoneNumber(phone);
         User user = optionalUser.orElseGet(() -> User.builder()
-                .phoneNumber(from)
+                .phoneNumber(phone)
                 .role(Role.CITIZEN)
+                .createdAt(LocalDateTime.now())
                 .build());
         userRepository.save(user);
 
         // Fetch or create WhatsApp session from DB
-        WhatsAppSession session = sessionRepository.findById(from)
+        WhatsAppSession session = sessionRepository.findById(phone)
                 .orElseGet(() -> WhatsAppSession.builder()
-                        .phoneNumber(from)
+                        .phoneNumber(phone)
                         .step("NEW")
                         .build());
 
-        MessagingResponse twiml = null;
+        MessagingResponse twiml;
 
         try {
             switch (session.getStep()) {
-
                 case "NEW" -> {
-                    otpService.generateAndSendOtp(user.getPhoneNumber());
+                    whatsAppOtpService.generateAndSendOtp(phone);
                     session.setStep("WAIT_OTP");
                     sessionRepository.save(session);
                     twiml = buildMessage(
                             "👋 Welcome to CivicSense!\n" +
-                                    "We've sent an OTP via SMS. Please reply here with the OTP."
+                                    "We've sent an OTP via WhatsApp. Please reply here with the OTP."
                     );
                 }
 
                 case "WAIT_OTP" -> {
-                    String token = otpService.verifyOtpAndGetToken(user.getPhoneNumber(), msg.trim());
+                    String token = whatsAppOtpService.verifyOtpAndGetToken(phone, msg.trim());
                     if (token != null) {
                         session.setStep("ASK_LOCATION");
                         sessionRepository.save(session);
@@ -150,7 +151,6 @@ public class WhatsAppController {
                 case "ASK_VOICE" -> {
                     if (!msg.equalsIgnoreCase("Skip")) session.setTempVoiceUrl(mediaUrl);
 
-                    // Build complaint object
                     Complaint complaint = Complaint.builder()
                             .title(session.getTempTitle())
                             .description(session.getTempDescription())
@@ -194,7 +194,6 @@ public class WhatsAppController {
             twiml = buildMessage("⚠️ Something went wrong. Please try again.");
         }
 
-        // Handle checked exception here
         try {
             return twiml.toXml();
         } catch (Exception e) {
@@ -209,4 +208,3 @@ public class WhatsAppController {
         return new MessagingResponse.Builder().message(message).build();
     }
 }
-
