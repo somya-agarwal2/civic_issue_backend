@@ -18,9 +18,11 @@ public class LoginResponse {
     @AllArgsConstructor
     public static class UserInfo {
         private Long id;
+
         private String fullName;
         private String email;
         private String role;
-        private String department;  // department name or null
+        private String department;
+        private Long departmentId;// department name or null
     }
 }

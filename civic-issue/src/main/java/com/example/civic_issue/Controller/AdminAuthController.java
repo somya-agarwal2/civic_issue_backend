@@ -53,7 +53,10 @@ public class AdminAuthController {
                 user.getFullName() != null ? user.getFullName() : "Unknown",
                 user.getEmail(),
                 mapRoleToFrontend(user.getRole()),
-                user.getDepartment() != null ? user.getDepartment().getName() : null
+                user.getDepartment() != null ? user.getDepartment().getName() : null,
+                user.getRole() == Role.DEPARTMENT_HEAD && user.getDepartment() != null
+                        ? user.getDepartment().getId()
+                        : null // only send department ID for department head
         );
 
         LoginResponse response = new LoginResponse(userInfo, token);

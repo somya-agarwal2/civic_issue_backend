@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import java.util.Map;
 
 
-
 @RestController
 @RequestMapping("/admin/departments")
 @RequiredArgsConstructor
@@ -113,6 +112,7 @@ public class DepartmentController {
 
         return ResponseEntity.ok(response);
     }
+
 
     @GetMapping("/{departmentId}")
     public ResponseEntity<?> getDepartmentById(

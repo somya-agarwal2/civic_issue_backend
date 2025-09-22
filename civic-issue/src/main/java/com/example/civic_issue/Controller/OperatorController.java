@@ -45,6 +45,7 @@ public class OperatorController {
                 .role(Role.OPERATOR)
                 .department(head.getDepartment())
                 .createdBy(head)
+                .fullName(request.getOperatorName())
                 .email(request.getEmail())
                 .specialization(request.getSpecialization())
                 .build();
