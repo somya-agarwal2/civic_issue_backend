@@ -182,7 +182,7 @@ public class WhatsAppController {
                 case "ASK_PHOTO" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
                         InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos"); // or "complaints/voice"
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
                         session.setTempPhotoUrl(uploadedUrl);
                     }
                     session.setStep("ASK_VOICE");
@@ -193,8 +193,8 @@ public class WhatsAppController {
                 case "ASK_VOICE" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
                         InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos"); // or "complaints/voice"
-                        session.setTempPhotoUrl(uploadedUrl);
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
+                        session.setTempVoiceUrl(uploadedUrl); // ✅ Correct property
                     }
 
                     // Save complaint
