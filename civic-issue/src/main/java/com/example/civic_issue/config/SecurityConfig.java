@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/complaints/create").hasAuthority("CITIZEN")
                         .requestMatchers("/api/complaints/update-status/**").hasAnyAuthority("SUPER_ADMIN","DEPARTMENT_HEAD","OPERATOR")
+                        .requestMatchers("/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
