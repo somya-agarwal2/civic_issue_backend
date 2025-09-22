@@ -15,7 +15,7 @@ public class LoginResponse {
 
     @Data
     @NoArgsConstructor
-    @AllArgsConstructor
+
     public static class UserInfo {
         private Long id;
         private String fullName;
@@ -23,6 +23,13 @@ public class LoginResponse {
         private String role;
         private String department;
         private Long departmentId;
-
+        public UserInfo(Long id, String fullName, String email, String role, String department, Long departmentId) {
+            this.id = id;
+            this.fullName = fullName;
+            this.email = email;
+            this.role = role;
+            this.department = department;
+            this.departmentId = departmentId;
+        }
     }
 }

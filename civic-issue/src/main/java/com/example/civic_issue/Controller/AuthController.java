@@ -66,9 +66,13 @@ public class AuthController {
                         user.getFullName() != null ? user.getFullName() : "Unknown",
                         user.getEmail(),
                         mapRoleToFrontend(user.getRole()),
-                        user.getDepartment() != null ? user.getDepartment().getName() : null
+                        user.getDepartment() != null ? user.getDepartment().getName() : null,
+                        (user.getRole() == Role.DEPARTMENT_HEAD && user.getDepartment() != null)
+                                ? Long.valueOf(user.getDepartment().getId())
+                                : null
                 );
             }
+
 
             return ResponseEntity.ok(new LoginResponse(userInfo, token));
         }
