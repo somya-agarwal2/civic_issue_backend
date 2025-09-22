@@ -1,12 +1,12 @@
 package com.example.civic_issue.Service;
 
 import com.example.civic_issue.enums.Priority;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 @Service
 public class GeminiService {
@@ -17,7 +17,7 @@ public class GeminiService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * Determines the priority of a complaint using Gemini API.
+     * Determines the priority of a complaint using Gemini 2.0 Flash API.
      *
      * @param title       Complaint title
      * @param description Complaint description
@@ -26,22 +26,23 @@ public class GeminiService {
      */
     public Priority determinePriority(String title, String description, String photoUrl) {
         try {
-            // 1️⃣ Build request payload with explicit instructions
+            // Build request payload
             String requestJson = buildPrompt(title, description, photoUrl);
 
-            // 2️⃣ Gemini API endpoint
-            String url = "https://vertexai.googleapis.com/v1/models/gemini:predict?key=" + apiKey;
+            // Gemini 2.0 Flash API endpoint
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-            // 3️⃣ HTTP headers
+            // HTTP headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Goog-Api-Key", apiKey);
 
             HttpEntity<String> entity = new HttpEntity<>(requestJson, headers);
 
-            // 4️⃣ Execute POST request
+            // Execute POST request
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
-            // 5️⃣ Parse API response to Priority
+            // Parse API response
             return parseResponse(response.getBody());
 
         } catch (Exception e) {
@@ -52,45 +53,45 @@ public class GeminiService {
     }
 
     /**
-     * Builds the JSON payload for Gemini API with clear classification instructions.
+     * Builds the JSON payload for Gemini 2.0 Flash API with explicit instructions.
      */
     private String buildPrompt(String title, String description, String photoUrl) {
-        StringBuilder text = new StringBuilder();
-        text.append("You are an AI assistant that classifies civic complaints into HIGH, MEDIUM, or LOW priority.\n");
-        text.append("Classify strictly into one of these labels.\n\n");
-        text.append("Complaint details:\n");
-        text.append("Title: ").append(title).append("\n");
-        text.append("Description: ").append(description).append("\n");
-        if (photoUrl != null && !photoUrl.isBlank()) {
-            text.append("Photo URL: ").append(photoUrl).append("\n");
-        }
-        text.append("\nAnswer only with HIGH, MEDIUM, or LOW.");
+        JSONObject part = new JSONObject();
+        part.put("text",
+                "Classify this civic complaint strictly into HIGH, MEDIUM, or LOW priority.\n" +
+                        "Answer only with the label (HIGH, MEDIUM, or LOW), nothing else.\n\n" +
+                        "Title: " + title + "\n" +
+                        "Description: " + description +
+                        (photoUrl != null && !photoUrl.isBlank() ? "\nPhoto URL: " + photoUrl : "")
+        );
 
-        JSONObject instance = new JSONObject();
-        instance.put("content", text.toString());  // Gemini expects 'content' for text
+        JSONArray parts = new JSONArray();
+        parts.put(part);
 
-        JSONArray instances = new JSONArray();
-        instances.put(instance);
+        JSONObject content = new JSONObject();
+        content.put("parts", parts);
+
+        JSONArray contents = new JSONArray();
+        contents.put(content);
 
         JSONObject json = new JSONObject();
-        json.put("instances", instances);
+        json.put("contents", contents);
 
         return json.toString();
     }
 
     /**
-     * Parses the Gemini API response and maps it to Priority enum.
+     * Parses the Gemini 2.0 Flash API response to map it to Priority enum.
      */
     private Priority parseResponse(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) return Priority.LOW;
 
         try {
             JSONObject json = new JSONObject(responseBody);
-            JSONArray predictions = json.optJSONArray("predictions");
+            JSONArray candidates = json.optJSONArray("candidates");
 
-            if (predictions != null && predictions.length() > 0) {
-                JSONObject first = predictions.getJSONObject(0);
-                String priorityText = first.optString("content", "").trim().toUpperCase();
+            if (candidates != null && candidates.length() > 0) {
+                String priorityText = candidates.getJSONObject(0).optString("content", "").trim().toUpperCase();
 
                 return switch (priorityText) {
                     case "HIGH" -> Priority.HIGH;

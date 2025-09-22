@@ -12,20 +12,34 @@ import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+// Add these imports at the top of your WhatsAppController
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Base64;
 
 import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+
+
 @RestController
 @RequestMapping("/whatsapp")
 @RequiredArgsConstructor
 public class WhatsAppController {
+    @Value("${twilio.account.sid}")
+    private String twilioAccountSid;
+
+    @Value("${twilio.auth.token}")
+    private String twilioAuthToken;
+
 
     private final UserRepository userRepository;
     private final WhatsAppSessionRepository sessionRepository;
@@ -167,8 +181,8 @@ public class WhatsAppController {
 
                 case "ASK_PHOTO" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
-                        InputStream inputStream = new URL(mediaUrl).openStream();
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
+                        InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos"); // or "complaints/voice"
                         session.setTempPhotoUrl(uploadedUrl);
                     }
                     session.setStep("ASK_VOICE");
@@ -178,9 +192,9 @@ public class WhatsAppController {
 
                 case "ASK_VOICE" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
-                        InputStream inputStream = new URL(mediaUrl).openStream();
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
-                        session.setTempVoiceUrl(uploadedUrl);
+                        InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
+                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos"); // or "complaints/voice"
+                        session.setTempPhotoUrl(uploadedUrl);
                     }
 
                     // Save complaint
@@ -243,6 +257,16 @@ public class WhatsAppController {
         headers.add(HttpHeaders.CONTENT_TYPE, "application/xml");
 
         return new ResponseEntity<>(responseXml, headers, HttpStatus.OK);
+    }
+    private InputStream getTwilioMedia(String mediaUrl, String accountSid, String authToken) throws Exception {
+        URL url = new URL(mediaUrl);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        String authStr = accountSid + ":" + authToken;
+        String encodedAuth = Base64.getEncoder().encodeToString(authStr.getBytes());
+        conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
+
+        return conn.getInputStream();
     }
 
     private MessagingResponse buildMessage(String text) {
