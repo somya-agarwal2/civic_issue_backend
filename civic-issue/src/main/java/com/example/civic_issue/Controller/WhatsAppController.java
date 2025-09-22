@@ -59,17 +59,21 @@ public class WhatsAppController {
 // Reset session if user wants to start fresh
         WhatsAppSession session;
         if (msg.equalsIgnoreCase("hi") || msg.equalsIgnoreCase("hello")) {
-            // Delete any previous session
             sessionRepository.deleteById(phone);
-
-            // Create a fresh session
             session = sessionRepository.save(
                     WhatsAppSession.builder()
                             .phoneNumber(phone)
                             .step("NEW")
+                            .tempTitle(null)
+                            .tempDescription(null)
+                            .tempCategory(null)
+                            .tempPhotoUrl(null)
+                            .tempVoiceUrl(null)
                             .build()
             );
-        } else {
+
+
+    } else {
             // Use existing session or create new if none exists
             session = sessionRepository.findById(phone)
                     .orElseGet(() -> sessionRepository.save(
@@ -204,6 +208,9 @@ public class WhatsAppController {
                                     "\nStatus: " + complaint.getStatus() +
                                     "\nPriority: " + complaint.getPriority()
                     );
+                }
+                case "DONE" -> {
+                    twiml = buildMessage("👋 Your previous complaint has been submitted. Type 'hi' to start a new complaint.");
                 }
 
                 default -> twiml = buildMessage("👋 Welcome to CivicSense! Please send any message to start.");
