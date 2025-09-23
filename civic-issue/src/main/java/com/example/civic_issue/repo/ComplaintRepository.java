@@ -6,6 +6,7 @@ import com.example.civic_issue.Model.User;
 import com.example.civic_issue.enums.ComplaintStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,6 +54,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     // -------------------------------
     // By status + department
     // -------------------------------
+    @EntityGraph(attributePaths = {"assignedTo"})
     List<Complaint> findByStatusAndAssignedTo_Department_Id(ComplaintStatus status, Long departmentId);
 
     // -------------------------------
