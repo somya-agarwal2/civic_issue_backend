@@ -41,6 +41,12 @@ public class CloudinaryService {
             throw new RuntimeException("Failed to upload file to Cloudinary: " + e.getMessage(), e);
         }
     }
+    public String uploadMultipartFile(MultipartFile file, String folder) throws IOException {
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                ObjectUtils.asMap("folder", folder));
+        return uploadResult.get("secure_url").toString();
+    }
+
 
     /**
      * Uploads a Base64 string to Cloudinary inside the specified folder.

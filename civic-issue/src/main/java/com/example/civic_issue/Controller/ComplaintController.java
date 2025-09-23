@@ -19,6 +19,8 @@ import com.example.civic_issue.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.RequestPart;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -41,14 +43,16 @@ public class ComplaintController {
     private final LocationService locationService;
     private final DepartmentRepository departmentRepository;
 
+
     // ================== CREATE COMPLAINT ==================
     @PostMapping("/create")
-    public ResponseEntity<?> createComplaint(
+    public ResponseEntity<?> createComplaintMultipart(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody ComplaintRequest complaintRequest
+            @RequestPart("data") ComplaintRequest complaintRequest,
+            @RequestPart(value = "photo", required = false) MultipartFile photoFile,
+            @RequestPart(value = "voice", required = false) MultipartFile voiceFile
     ) {
         try {
-            // Extract user from JWT
             String token = authHeader.substring(7);
             String phoneNumber = jwtUtil.extractPhoneNumber(token);
 
@@ -56,49 +60,42 @@ public class ComplaintController {
                     .orElseThrow(() -> new RuntimeException("Citizen not found"));
 
             if (citizen.getRole() != Role.CITIZEN) {
-                return ResponseEntity.status(403)
-                        .body(new SimpleResponse(false, "Only citizens can file complaints"));
+                return ResponseEntity.status(403).body(new SimpleResponse(false, "Only citizens can file complaints"));
             }
 
-            // Fetch department dynamically from DB using departmentId
             Department department = departmentRepository.findById(complaintRequest.getDepartmentId())
                     .orElseThrow(() -> new RuntimeException("Department not found"));
 
-            // Upload optional files to Cloudinary
+            // Upload files to Cloudinary
             String photoUrl = null;
-            if (complaintRequest.getPhotoBase64() != null && !complaintRequest.getPhotoBase64().isBlank()) {
-                photoUrl = cloudinaryService.uploadBase64(complaintRequest.getPhotoBase64(), "complaints/photos");
+            if (photoFile != null && !photoFile.isEmpty()) {
+                photoUrl = cloudinaryService.uploadMultipartFile(photoFile, "complaints/photos");
             }
 
             String voiceUrl = null;
-            if (complaintRequest.getVoiceBase64() != null && !complaintRequest.getVoiceBase64().isBlank()) {
-                voiceUrl = cloudinaryService.uploadBase64(complaintRequest.getVoiceBase64(), "complaints/voices");
+            if (voiceFile != null && !voiceFile.isEmpty()) {
+                voiceUrl = cloudinaryService.uploadMultipartFile(voiceFile, "complaints/voices");
             }
 
-            // Determine priority via Gemini
+            // Determine priority
             Priority priority = geminiService.determinePriority(
                     complaintRequest.getTitle(),
                     complaintRequest.getDescription(),
                     photoUrl
             );
 
-            // Compute due date
-            LocalDateTime dueDate;
-            switch (priority) {
-                case HIGH -> dueDate = LocalDateTime.now().plusDays(3);
-                case MEDIUM -> dueDate = LocalDateTime.now().plusDays(7);
-                case LOW -> dueDate = LocalDateTime.now().plusMonths(3);
-                default -> dueDate = LocalDateTime.now().plusDays(7);
-            }
+            LocalDateTime dueDate = switch (priority) {
+                case HIGH -> LocalDateTime.now().plusDays(3);
+                case MEDIUM -> LocalDateTime.now().plusDays(7);
+                case LOW -> LocalDateTime.now().plusMonths(3);
+            };
 
-            // Fetch address from citizen coordinates
             String fetchedAddress = locationService.getAddressFromCoordinates(citizen.getLatitude(), citizen.getLongitude());
 
-            // Build complaint
             Complaint complaint = Complaint.builder()
                     .title(complaintRequest.getTitle())
                     .description(complaintRequest.getDescription())
-                    .department(department) // reference the department entity
+                    .department(department)
                     .address(fetchedAddress)
                     .latitude(citizen.getLatitude())
                     .longitude(citizen.getLongitude())
@@ -118,25 +115,15 @@ public class ComplaintController {
                 complaint.setAssignedAt(LocalDateTime.now());
             }
 
-            // Save complaint
             Complaint saved = complaintRepository.save(complaint);
 
             // Build timeline
             List<ComplaintResponse.TimelineEvent> timeline = new ArrayList<>();
-            timeline.add(new ComplaintResponse.TimelineEvent(
-                    saved.getCreatedAt().toString(),
-                    "Report submitted",
-                    citizen.getFullName() != null ? citizen.getFullName() : "Unknown"
-            ));
+            timeline.add(new ComplaintResponse.TimelineEvent(saved.getCreatedAt().toString(), "Report submitted", citizen.getFullName()));
             if (saved.getAssignedTo() != null) {
-                timeline.add(new ComplaintResponse.TimelineEvent(
-                        saved.getAssignedAt() != null ? saved.getAssignedAt().toString() : null,
-                        "Report assigned",
-                        saved.getAssignedTo().getFullName() != null ? saved.getAssignedTo().getFullName() : "Unknown"
-                ));
+                timeline.add(new ComplaintResponse.TimelineEvent(saved.getAssignedAt().toString(), "Report assigned", saved.getAssignedTo().getFullName()));
             }
 
-            // Build response
             ComplaintResponse response = ComplaintResponse.builder()
                     .id(saved.getId())
                     .title(saved.getTitle())
@@ -148,22 +135,19 @@ public class ComplaintController {
                     .photoUrl(saved.getPhotoUrl())
                     .voiceUrl(saved.getVoiceUrl())
                     .createdAt(saved.getCreatedAt().toString())
-                    .priority(saved.getPriority() != null ? saved.getPriority().name() : null)
+                    .priority(saved.getPriority().name())
                     .status(saved.getStatus().name())
-                    .dueDate(saved.getDueDate() != null ? saved.getDueDate().toString() : null)
+                    .dueDate(saved.getDueDate().toString())
                     .assignedTo(saved.getAssignedTo() != null ? saved.getAssignedTo().getFullName() : null)
-                    .assignedToDepartment(saved.getAssignedTo() != null && saved.getAssignedTo().getDepartment() != null
-                            ? saved.getAssignedTo().getDepartment().getName()
-                            : null)
+                    .assignedToDepartment(saved.getAssignedTo() != null && saved.getAssignedTo().getDepartment() != null ? saved.getAssignedTo().getDepartment().getName() : null)
                     .timeline(timeline)
                     .build();
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace(); // log full exception
-            return ResponseEntity.badRequest()
-                    .body(new SimpleResponse(false, "Failed to create complaint: " + e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to create complaint: " + e.getMessage()));
         }
     }
 
