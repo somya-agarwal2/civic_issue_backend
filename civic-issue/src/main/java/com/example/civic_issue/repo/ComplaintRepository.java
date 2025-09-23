@@ -4,10 +4,12 @@ import com.example.civic_issue.Model.Complaint;
 import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
 import com.example.civic_issue.enums.ComplaintStatus;
+import com.twilio.base.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.awt.print.Pageable;
 import java.util.List;
 
 public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
@@ -27,6 +29,15 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     // -------------------------------
     // By department (via assignedTo.department)
     // -------------------------------
+
+    // Complaints for a department
+    List<Complaint> findByDepartment_Id(Long departmentId);
+
+    // Count complaints for a department by status
+    long countByDepartment_IdAndStatus(Long departmentId, ComplaintStatus status);
+
+
+    Page<Complaint> findByStatus(ComplaintStatus status, Pageable pageable);
 
 
     // -------------------------------

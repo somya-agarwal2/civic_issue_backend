@@ -9,7 +9,6 @@ import com.example.civic_issue.Service.GeminiService;
 import com.example.civic_issue.Service.LocationService;
 import com.example.civic_issue.dto.ComplaintRequest;
 import com.example.civic_issue.dto.ComplaintResponse;
-import com.example.civic_issue.enums.Category;
 import com.example.civic_issue.enums.ComplaintStatus;
 import com.example.civic_issue.enums.Priority;
 import com.example.civic_issue.enums.Role;
@@ -61,9 +60,9 @@ public class ComplaintController {
                         .body(new SimpleResponse(false, "Only citizens can file complaints"));
             }
 
-            // Fetch department dynamically from DB
-            Department department = departmentRepository.findByName(complaintRequest.getCategory())
-                    .orElseThrow(() -> new RuntimeException("Department not found: " + complaintRequest.getCategory()));
+            // Fetch department dynamically from DB using departmentId
+            Department department = departmentRepository.findById(complaintRequest.getDepartmentId())
+                    .orElseThrow(() -> new RuntimeException("Department not found"));
 
             // Upload optional files to Cloudinary
             String photoUrl = null;
@@ -80,7 +79,7 @@ public class ComplaintController {
             Priority priority = geminiService.determinePriority(
                     complaintRequest.getTitle(),
                     complaintRequest.getDescription(),
-                    photoUrl // can be null
+                    photoUrl
             );
 
             // Compute due date
@@ -92,14 +91,13 @@ public class ComplaintController {
                 default -> dueDate = LocalDateTime.now().plusDays(7);
             }
 
-            // Fetch address from coordinates
+            // Fetch address from citizen coordinates
             String fetchedAddress = locationService.getAddressFromCoordinates(citizen.getLatitude(), citizen.getLongitude());
 
             // Build complaint
             Complaint complaint = Complaint.builder()
                     .title(complaintRequest.getTitle())
                     .description(complaintRequest.getDescription())
-                    .category(department.getName())
                     .department(department) // reference the department entity
                     .address(fetchedAddress)
                     .latitude(citizen.getLatitude())
@@ -143,7 +141,7 @@ public class ComplaintController {
                     .id(saved.getId())
                     .title(saved.getTitle())
                     .description(saved.getDescription())
-                    .category(saved.getCategory())
+                    .departmentId(saved.getDepartment() != null ? saved.getDepartment().getId() : null)
                     .address(saved.getAddress())
                     .latitude(saved.getLatitude())
                     .longitude(saved.getLongitude())
@@ -168,6 +166,7 @@ public class ComplaintController {
                     .body(new SimpleResponse(false, "Failed to create complaint: " + e.getMessage()));
         }
     }
+
 
     @GetMapping("/assigned-reports")
     public ResponseEntity<?> getAssignedReports(@RequestHeader("Authorization") String authHeader) {
@@ -313,7 +312,7 @@ public class ComplaintController {
         response.put("attachments", attachments);
         response.put("timeline", timeline);
         response.put("priority", complaint.getPriority() != null ? complaint.getPriority().name().toLowerCase() : "normal");
-        response.put("category", complaint.getCategory());
+        response.put("department", complaint.getDepartment() != null ? complaint.getDepartment().getName() : null);
         response.put("estimatedResolution", complaint.getDueDate() != null ? complaint.getDueDate().toLocalDate().toString() : "N/A");
 
         return ResponseEntity.ok(response);

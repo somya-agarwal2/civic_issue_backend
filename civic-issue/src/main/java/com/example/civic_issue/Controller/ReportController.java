@@ -124,7 +124,10 @@ public class ReportController {
                 .id(complaint.getId())
                 .title(complaint.getTitle())
                 .description(complaint.getDescription())
-                .category(complaint.getCategory())
+                .departmentId(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
+                        ? complaint.getAssignedTo().getDepartment().getId()
+                        : null)
+
                 .address(complaint.getAddress())
                 .latitude(complaint.getLatitude())
                 .longitude(complaint.getLongitude())

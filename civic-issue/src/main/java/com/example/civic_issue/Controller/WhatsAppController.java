@@ -18,29 +18,24 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-// Add these imports at the top of your WhatsAppController
+
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.Base64;
-import java.time.LocalDateTime;
-import java.io.InputStream;
-import java.net.URL;
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-
+import java.util.List;
 
 @RestController
 @RequestMapping("/whatsapp")
 @RequiredArgsConstructor
 public class WhatsAppController {
+
     @Value("${twilio.account.sid}")
     private String twilioAccountSid;
 
     @Value("${twilio.auth.token}")
     private String twilioAuthToken;
-
 
     private final UserRepository userRepository;
     private final WhatsAppSessionRepository sessionRepository;
@@ -75,7 +70,7 @@ public class WhatsAppController {
                                 .build()
                 ));
 
-        // Reset session if user wants to start fresh
+        // Manage session
         WhatsAppSession session;
         if (msg.equalsIgnoreCase("hi") || msg.equalsIgnoreCase("hello")) {
             sessionRepository.deleteById(phone);
@@ -83,11 +78,6 @@ public class WhatsAppController {
                     WhatsAppSession.builder()
                             .phoneNumber(phone)
                             .step("NEW")
-                            .tempTitle(null)
-                            .tempDescription(null)
-                            .tempCategory(null)
-                            .tempPhotoUrl(null)
-                            .tempVoiceUrl(null)
                             .build()
             );
         } else {
@@ -104,6 +94,7 @@ public class WhatsAppController {
 
         try {
             switch (session.getStep()) {
+
                 case "NEW" -> {
                     whatsAppOtpService.generateAndSendOtp(phone);
                     session.setStep("WAIT_OTP");
@@ -148,56 +139,57 @@ public class WhatsAppController {
 
                 case "ASK_DESCRIPTION" -> {
                     session.setTempDescription(msg.trim());
-                    session.setStep("ASK_CATEGORY");
+                    session.setStep("ASK_DEPARTMENT");
                     sessionRepository.save(session);
-                    twiml = buildMessage(
-                            "Please select category by number:\n" +
-                                    "1. Water & Sewerage\n" +
-                                    "2. Electricity & Power\n" +
-                                    "3. Roads & Transport\n" +
-                                    "4. Sanitation & Waste\n" +
-                                    "5. Health & Public Safety"
-                    );
+
+                    // Fetch dynamic department list
+                    List<Department> departments = complaintService.getAllDepartments();
+                    if (departments.isEmpty()) {
+                        twiml = buildMessage("⚠️ No departments available. Contact admin.");
+                    } else {
+                        StringBuilder deptMessage = new StringBuilder("Please select a department by number:\n");
+                        for (int i = 0; i < departments.size(); i++) {
+                            deptMessage.append(i + 1).append(". ").append(departments.get(i).getName()).append("\n");
+                        }
+                        twiml = buildMessage(deptMessage.toString());
+                    }
                 }
 
-                case "ASK_CATEGORY" -> {
-                    String categoryInput = msg.trim(); // whatever user/admin sends
-
-                    Department department = complaintService.getDepartmentByName(categoryInput);
-                    session.setTempCategory(categoryInput); // or save department id
-                    session.setStep("ASK_PHOTO");
-                    sessionRepository.save(session);
-                    twiml = buildMessage("📸 You can upload a photo (optional). Send 'Skip' to continue.");
+                case "ASK_DEPARTMENT" -> {
+                    List<Department> departments = complaintService.getAllDepartments();
+                    try {
+                        int selectedIndex = Integer.parseInt(msg.trim()) - 1;
+                        if (selectedIndex >= 0 && selectedIndex < departments.size()) {
+                            Department department = departments.get(selectedIndex);
+                            session.setTempDepartmentId(department.getId().toString());
+                            session.setStep("ASK_PHOTO");
+                            sessionRepository.save(session);
+                            twiml = buildMessage("📸 You can upload a photo (optional). Send 'Skip' to continue.");
+                        } else {
+                            twiml = buildMessage("⚠️ Invalid selection. Reply with a valid number.");
+                        }
+                    } catch (NumberFormatException e) {
+                        twiml = buildMessage("⚠️ Please reply with the number of your department.");
+                    }
                 }
-
 
                 case "ASK_PHOTO" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
                         try {
-                            // Download the media from Twilio with authentication
                             InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-
-                            // Upload directly to Cloudinary under the "complaints/photos" folder
                             String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
-
-                            // Save the uploaded URL in the session
                             session.setTempPhotoUrl(uploadedUrl);
                         } catch (Exception e) {
                             e.printStackTrace();
-                            // Optional: notify user something went wrong with the upload
                             session.setTempPhotoUrl(null);
                         }
                     }
-
-
                     session.setStep("ASK_VOICE");
                     sessionRepository.save(session);
                     twiml = buildMessage("🎤 You can upload a voice note (optional). Send 'Skip' to continue.");
                 }
 
-
                 case "ASK_VOICE" -> {
-                    // Upload voice if available
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
                         try {
                             InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
@@ -209,14 +201,13 @@ public class WhatsAppController {
                         }
                     }
 
-                    // Determine priority once
+                    // Determine priority
                     com.example.civic_issue.enums.Priority priority = complaintService.getPriority(
                             session.getTempTitle(),
                             session.getTempDescription(),
                             session.getTempPhotoUrl()
                     );
 
-                    // Determine due date based on priority
                     LocalDateTime dueDate;
                     switch (priority) {
                         case LOW -> dueDate = LocalDateTime.now().plusMonths(3);
@@ -225,11 +216,15 @@ public class WhatsAppController {
                         default -> dueDate = LocalDateTime.now().plusDays(7);
                     }
 
-                    // Build complaint after URLs and priority are ready
+                    // Get department entity
+                    Long departmentId = Long.parseLong(session.getTempDepartmentId());
+                    Department department = complaintService.getDepartmentById(departmentId);
+
+                    // Build complaint
                     Complaint complaint = Complaint.builder()
                             .title(session.getTempTitle())
                             .description(session.getTempDescription())
-                            .category(session.getTempCategory())
+                            .department(department)
                             .latitude(user.getLatitude())
                             .longitude(user.getLongitude())
                             .address(locationService.getAddressFromCoordinates(user.getLatitude(), user.getLongitude()))
@@ -240,24 +235,18 @@ public class WhatsAppController {
                             .createdAt(LocalDateTime.now())
                             .dueDate(dueDate)
                             .user(user)
-                            .department(complaintService.getDepartmentByName(session.getTempCategory()))
-
                             .assignedTo(null)
                             .build();
 
-                    // Assign department head if available
-                    Department department = complaintService.getDepartmentByName(session.getTempCategory());
+                    // Assign department head if exists
                     User head = departmentAssignmentService.getDepartmentHeadForDepartment(department);
-
                     if (head != null) {
                         complaint.setAssignedTo(head);
                         complaint.setAssignedAt(LocalDateTime.now());
                     }
 
-                    // Save complaint in DB
                     complaintService.saveComplaint(complaint);
 
-                    // Mark session as DONE
                     session.setStep("DONE");
                     sessionRepository.save(session);
 
@@ -268,11 +257,9 @@ public class WhatsAppController {
                     );
                 }
 
-                case "DONE" -> {
-                    twiml = buildMessage("👋 Your previous complaint has been submitted. Type 'hi' to start a new complaint.");
-                }
+                case "DONE" -> twiml = buildMessage("👋 Your previous complaint has been submitted. Type 'hi' to start a new complaint.");
 
-                default -> twiml = buildMessage("👋 Welcome to CivicSense! Please send any message to start.");
+                default -> twiml = buildMessage("👋 Welcome to CivicSense! Send any message to start.");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -292,6 +279,7 @@ public class WhatsAppController {
 
         return new ResponseEntity<>(responseXml, headers, HttpStatus.OK);
     }
+
     private InputStream getTwilioMedia(String mediaUrl, String accountSid, String authToken) throws Exception {
         URL url = new URL(mediaUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -309,4 +297,3 @@ public class WhatsAppController {
         return new MessagingResponse.Builder().message(message).build();
     }
 }
-

@@ -1,6 +1,5 @@
 package com.example.civic_issue.Model;
 
-import com.example.civic_issue.enums.Category;
 import com.example.civic_issue.enums.Priority;
 import com.example.civic_issue.enums.ComplaintStatus;
 import lombok.*;

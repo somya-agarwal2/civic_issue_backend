@@ -19,7 +19,8 @@ public class WhatsAppSession {
 
     private String tempTitle;
     private String tempDescription;
-    private String tempCategory;
+
+    private String tempDepartmentId;
     private String tempPhotoUrl;
     private String tempVoiceUrl;
 }

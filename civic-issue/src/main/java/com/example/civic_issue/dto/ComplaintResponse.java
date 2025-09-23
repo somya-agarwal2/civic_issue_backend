@@ -10,10 +10,12 @@ import java.util.List;
 @Getter
 @Setter
 public class ComplaintResponse {
+
     private Long id;
     private String title;
     private String description;
-    private String category;
+    private Long departmentId;       // Use the actual department ID
+    private String departmentName;   // Include department name dynamically
     private String address;
     private Double latitude;
     private Double longitude;
@@ -24,8 +26,8 @@ public class ComplaintResponse {
     private String status;   // ComplaintStatus
     private String dueDate;
 
-    private String assignedTo; // Name of assigned operator/department head
-    private String assignedToDepartment; // Department name
+    private String assignedTo;            // Name of assigned operator/department head
+    private String assignedToDepartment;  // Department name of assignee
 
     private List<TimelineEvent> timeline; // Timeline events for frontend
 

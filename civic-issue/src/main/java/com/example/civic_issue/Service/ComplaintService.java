@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 @Service
 @RequiredArgsConstructor
@@ -62,7 +63,13 @@ public class ComplaintService {
                 ));
     }
 
-
+    public List<Department> getAllDepartments() {
+        return departmentRepository.findAll();
+    }
+    public Department getDepartmentById(Long id) {
+        return departmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
+    }
     public Optional<Complaint> getComplaintById(Long id) {
         return complaintRepository.findById(id);
     }
