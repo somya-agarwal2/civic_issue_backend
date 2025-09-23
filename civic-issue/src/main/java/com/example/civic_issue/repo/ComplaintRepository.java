@@ -20,7 +20,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     List<Complaint> findByStatus(ComplaintStatus status);
 
     Page<Complaint> findByStatus(ComplaintStatus status, Pageable pageable);
-
+    List<Complaint> findByStatusAndAssignedTo(ComplaintStatus status, User assignedTo);
     // -------------------------------
     // By assigned user (operator or head)
     // -------------------------------

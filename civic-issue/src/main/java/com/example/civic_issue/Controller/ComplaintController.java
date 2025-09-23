@@ -236,7 +236,7 @@ public class ComplaintController {
             complaintRepository.save(complaint);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("id", "R" + complaint.getId());
+            response.put("id",  complaint.getId());
             response.put("assignedTo", assignee.getFullName());
             response.put("department", department.getName());
             response.put("assignedAt", complaint.getAssignedAt());

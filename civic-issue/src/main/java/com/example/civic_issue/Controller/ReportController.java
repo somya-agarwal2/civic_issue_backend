@@ -88,8 +88,8 @@ public class ReportController {
         }
 
         List<Complaint> complaints = status
-                .map(s -> complaintRepository.findByStatusAndAssignedTo_Department_Id(s, operator.getDepartment().getId()))
-                .orElseGet(() -> complaintRepository.findByAssignedTo_Department_Id(operator.getDepartment().getId()));
+                .map(s -> complaintRepository.findByStatusAndAssignedTo(s, operator))
+                .orElseGet(() -> complaintRepository.findByAssignedTo(operator));
 
         List<ComplaintResponse> response = complaints.stream()
                 .map(this::mapToDTO)

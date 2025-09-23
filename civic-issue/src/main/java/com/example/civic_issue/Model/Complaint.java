@@ -44,9 +44,12 @@ public class Complaint {
     private LocalDateTime assignedAt;
     private LocalDateTime resolvedAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user; // Citizen who created
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "assigned_to_id")
     private User assignedTo; // Department head/operator
+
 }
