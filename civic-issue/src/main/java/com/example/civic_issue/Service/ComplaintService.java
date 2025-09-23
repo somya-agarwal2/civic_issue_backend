@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class ComplaintService {
@@ -21,6 +22,17 @@ public class ComplaintService {
     private final ComplaintRepository complaintRepository;
     private final DepartmentRepository departmentRepository;
 
+    /**
+     * Creates and saves a new complaint.
+     *
+     * @param user        User who filed the complaint
+     * @param title       Complaint title
+     * @param description Complaint description
+     * @param category    Complaint category
+     * @param photoUrl    Photo URL (optional)
+     * @param voiceUrl    Voice URL (optional)
+     * @return Saved Complaint
+     */
     public Complaint createComplaint(User user, String title, String description, String category, String photoUrl, String voiceUrl) {
         Priority priority = geminiService.determinePriority(title, description, photoUrl);
 
@@ -49,13 +61,23 @@ public class ComplaintService {
         return complaintRepository.save(complaint);
     }
 
+    /**
+     * Save or update an existing complaint.
+     */
     public Complaint saveComplaint(Complaint complaint) {
         return complaintRepository.save(complaint);
     }
 
+    /**
+     * Get priority based on title, description, and photo URL using GeminiService.
+     */
     public Priority getPriority(String title, String description, String photoUrl) {
         return geminiService.determinePriority(title, description, photoUrl);
     }
+
+    /**
+     * Fetch a department by its name.
+     */
     public Department getDepartmentByName(String departmentName) {
         return departmentRepository.findByName(departmentName)
                 .orElseThrow(() -> new RuntimeException(
@@ -63,13 +85,24 @@ public class ComplaintService {
                 ));
     }
 
+    /**
+     * Get all departments.
+     */
     public List<Department> getAllDepartments() {
         return departmentRepository.findAll();
     }
+
+    /**
+     * Fetch a department by its ID.
+     */
     public Department getDepartmentById(Long id) {
         return departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
     }
+
+    /**
+     * Fetch a complaint by its ID.
+     */
     public Optional<Complaint> getComplaintById(Long id) {
         return complaintRepository.findById(id);
     }
