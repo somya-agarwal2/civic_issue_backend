@@ -16,28 +16,14 @@ public class DepartmentAssignmentService {
     /**
      * Returns the department head assigned for the given department name.
      *
-     * @param
+     * @param department Department entity
      * @return User object of department head, or null if none found
      */
     public User getDepartmentHeadForDepartment(Department department) {
         if (department == null) return null;
 
-        return userRepository.findByRoleAndDepartment_Name(Role.DEPARTMENT_HEAD,department.getName())
+        return userRepository
+                .findByRoleAndDepartment_Name(Role.DEPARTMENT_HEAD, department.getName())
                 .orElse(null);
     }
-
-
-
-
-    /**
-     * Checks if the given category string is valid.
-     *
-     * @param categoryStr Category string
-     * @return true if valid, false otherwise
-     */
-    public boolean isValidCategory(String categoryStr) {
-        return Category.fromString(categoryStr) != null;
-    }
 }
-
-
