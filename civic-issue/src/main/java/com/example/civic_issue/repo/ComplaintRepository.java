@@ -58,9 +58,10 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     // -------------------------------
     // Flexible query: optional filters for status & department
     // -------------------------------
-    @Query("SELECT c FROM Complaint c WHERE " +
-            "(:status IS NULL OR c.status = :status) AND " +
-            "(:departmentId IS NULL OR c.assignedTo.department.id = :departmentId)")
+    @Query("SELECT c FROM Complaint c " +
+            "JOIN FETCH c.assignedTo a " + // ensures assignedTo is loaded
+            "WHERE (:status IS NULL OR c.status = :status) " +
+            "AND (:departmentId IS NULL OR a.department.id = :departmentId)")
     List<Complaint> findByStatusAndDepartmentOptional(
             @Param("status") ComplaintStatus status,
             @Param("departmentId") Long departmentId
