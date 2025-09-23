@@ -1,10 +1,12 @@
 package com.example.civic_issue.Service;
 
 import com.example.civic_issue.Model.Complaint;
+import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
 import com.example.civic_issue.enums.ComplaintStatus;
 import com.example.civic_issue.enums.Priority;
 import com.example.civic_issue.repo.ComplaintRepository;
+import com.example.civic_issue.repo.DepartmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,7 @@ public class ComplaintService {
 
     private final GeminiService geminiService;
     private final ComplaintRepository complaintRepository;
+    private final DepartmentRepository departmentRepository;
 
     public Complaint createComplaint(User user, String title, String description, String category, String photoUrl, String voiceUrl) {
         Priority priority = geminiService.determinePriority(title, description, photoUrl);
@@ -52,6 +55,13 @@ public class ComplaintService {
     public Priority getPriority(String title, String description, String photoUrl) {
         return geminiService.determinePriority(title, description, photoUrl);
     }
+    public Department getDepartmentByName(String departmentName) {
+        return departmentRepository.findByName(departmentName)
+                .orElseThrow(() -> new RuntimeException(
+                        "Department not found: " + departmentName
+                ));
+    }
+
 
     public Optional<Complaint> getComplaintById(Long id) {
         return complaintRepository.findById(id);

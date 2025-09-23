@@ -1,5 +1,6 @@
 package com.example.civic_issue.Service;
 
+import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
 import com.example.civic_issue.enums.Category;
 import com.example.civic_issue.enums.Role;
@@ -16,16 +17,18 @@ public class DepartmentAssignmentService {
     /**
      * Returns the department head assigned for the given department name.
      *
-     * @param departmentName Name of the department
+     * @param
      * @return User object of department head, or null if none found
      */
-    public User getDepartmentHeadForCategory(String departmentName) {
-        if (departmentName == null) return null;
+    public User getDepartmentHeadForDepartment(Department department) {
+        if (department == null) return null;
 
-        return userRepository
-                .findByRoleAndDepartment_Name(Role.DEPARTMENT_HEAD, departmentName)
+        return userRepository.findByRoleAndDepartment_Name(Role.DEPARTMENT_HEAD,department.getName())
                 .orElse(null);
     }
+
+
+
 
     /**
      * Checks if the given category string is valid.

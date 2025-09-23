@@ -49,6 +49,7 @@ public class ComplaintController {
             @RequestBody ComplaintRequest complaintRequest
     ) {
         try {
+            // Extract user from JWT
             String token = authHeader.substring(7);
             String phoneNumber = jwtUtil.extractPhoneNumber(token);
 
@@ -60,53 +61,51 @@ public class ComplaintController {
                         .body(new SimpleResponse(false, "Only citizens can file complaints"));
             }
 
-            // Validate category
-            Category categoryEnum = Category.fromString(complaintRequest.getCategory());
-            if (categoryEnum == null) {
-                return ResponseEntity.badRequest()
-                        .body(new SimpleResponse(false, "Invalid category: " + complaintRequest.getCategory()));
-            }
+            // Fetch department dynamically from DB
+            Department department = departmentRepository.findByName(complaintRequest.getCategory())
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + complaintRequest.getCategory()));
 
-            // Upload files only if provided
+            // Upload optional files to Cloudinary
             String photoUrl = null;
             if (complaintRequest.getPhotoBase64() != null && !complaintRequest.getPhotoBase64().isBlank()) {
-                photoUrl = cloudinaryService.uploadBase64(
-                        complaintRequest.getPhotoBase64(), "complaints/photos");
+                photoUrl = cloudinaryService.uploadBase64(complaintRequest.getPhotoBase64(), "complaints/photos");
             }
 
             String voiceUrl = null;
             if (complaintRequest.getVoiceBase64() != null && !complaintRequest.getVoiceBase64().isBlank()) {
-                voiceUrl = cloudinaryService.uploadBase64(
-                        complaintRequest.getVoiceBase64(), "complaints/voices");
+                voiceUrl = cloudinaryService.uploadBase64(complaintRequest.getVoiceBase64(), "complaints/voices");
             }
 
-            // Determine priority
+            // Determine priority via Gemini
             Priority priority = geminiService.determinePriority(
                     complaintRequest.getTitle(),
                     complaintRequest.getDescription(),
                     photoUrl // can be null
             );
 
-            LocalDateTime dueDate = switch (priority) {
-                case HIGH -> LocalDateTime.now().plusWeeks(1);
-                case MEDIUM -> LocalDateTime.now().plusMonths(1);
-                default -> LocalDateTime.now().plusMonths(3);
-            };
+            // Compute due date
+            LocalDateTime dueDate;
+            switch (priority) {
+                case HIGH -> dueDate = LocalDateTime.now().plusDays(3);
+                case MEDIUM -> dueDate = LocalDateTime.now().plusDays(7);
+                case LOW -> dueDate = LocalDateTime.now().plusMonths(3);
+                default -> dueDate = LocalDateTime.now().plusDays(7);
+            }
 
-            String fetchedAddress = locationService.getAddressFromCoordinates(
-                    citizen.getLatitude(),
-                    citizen.getLongitude()
-            );
+            // Fetch address from coordinates
+            String fetchedAddress = locationService.getAddressFromCoordinates(citizen.getLatitude(), citizen.getLongitude());
 
+            // Build complaint
             Complaint complaint = Complaint.builder()
                     .title(complaintRequest.getTitle())
                     .description(complaintRequest.getDescription())
-                    .category(categoryEnum.getDisplayName())
+                    .category(department.getName())
+                    .department(department) // reference the department entity
                     .address(fetchedAddress)
                     .latitude(citizen.getLatitude())
                     .longitude(citizen.getLongitude())
-                    .photoUrl(photoUrl)   // optional
-                    .voiceUrl(voiceUrl)   // optional
+                    .photoUrl(photoUrl)
+                    .voiceUrl(voiceUrl)
                     .priority(priority)
                     .status(ComplaintStatus.PENDING)
                     .createdAt(LocalDateTime.now())
@@ -115,12 +114,13 @@ public class ComplaintController {
                     .build();
 
             // Assign department head if exists
-            User departmentHead = departmentAssignmentService.getDepartmentHeadForCategory(categoryEnum.getDepartmentName());
+            User departmentHead = departmentAssignmentService.getDepartmentHeadForDepartment(department);
             if (departmentHead != null) {
                 complaint.setAssignedTo(departmentHead);
                 complaint.setAssignedAt(LocalDateTime.now());
             }
 
+            // Save complaint
             Complaint saved = complaintRepository.save(complaint);
 
             // Build timeline
@@ -130,7 +130,6 @@ public class ComplaintController {
                     "Report submitted",
                     citizen.getFullName() != null ? citizen.getFullName() : "Unknown"
             ));
-
             if (saved.getAssignedTo() != null) {
                 timeline.add(new ComplaintResponse.TimelineEvent(
                         saved.getAssignedAt() != null ? saved.getAssignedAt().toString() : null,
@@ -148,8 +147,8 @@ public class ComplaintController {
                     .address(saved.getAddress())
                     .latitude(saved.getLatitude())
                     .longitude(saved.getLongitude())
-                    .photoUrl(saved.getPhotoUrl())   // optional
-                    .voiceUrl(saved.getVoiceUrl())   // optional
+                    .photoUrl(saved.getPhotoUrl())
+                    .voiceUrl(saved.getVoiceUrl())
                     .createdAt(saved.getCreatedAt().toString())
                     .priority(saved.getPriority() != null ? saved.getPriority().name() : null)
                     .status(saved.getStatus().name())
@@ -166,7 +165,7 @@ public class ComplaintController {
         } catch (Exception e) {
             e.printStackTrace(); // log full exception
             return ResponseEntity.badRequest()
-                    .body(new SimpleResponse(false, "Failed to create complaint"));
+                    .body(new SimpleResponse(false, "Failed to create complaint: " + e.getMessage()));
         }
     }
 

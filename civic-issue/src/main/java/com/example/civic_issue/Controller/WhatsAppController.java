@@ -1,6 +1,7 @@
 package com.example.civic_issue.Controller;
 
 import com.example.civic_issue.Model.Complaint;
+import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
 import com.example.civic_issue.Model.WhatsAppSession;
 import com.example.civic_issue.Service.*;
@@ -22,7 +23,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Base64;
-
+import java.time.LocalDateTime;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -160,24 +161,15 @@ public class WhatsAppController {
                 }
 
                 case "ASK_CATEGORY" -> {
-                    String category = switch (msg.trim()) {
-                        case "1" -> "Water & Sewerage";
-                        case "2" -> "Electricity & Power";
-                        case "3" -> "Roads & Transport";
-                        case "4" -> "Sanitation & Waste";
-                        case "5" -> "Health & Public Safety";
-                        default -> null;
-                    };
+                    String categoryInput = msg.trim(); // whatever user/admin sends
 
-                    if (category == null) {
-                        twiml = buildMessage("❌ Invalid selection. Please choose 1-5.");
-                    } else {
-                        session.setTempCategory(category);
-                        session.setStep("ASK_PHOTO");
-                        sessionRepository.save(session);
-                        twiml = buildMessage("📸 You can upload a photo (optional). Send 'Skip' to continue.");
-                    }
+                    Department department = complaintService.getDepartmentByName(categoryInput);
+                    session.setTempCategory(categoryInput); // or save department id
+                    session.setStep("ASK_PHOTO");
+                    sessionRepository.save(session);
+                    twiml = buildMessage("📸 You can upload a photo (optional). Send 'Skip' to continue.");
                 }
+
 
                 case "ASK_PHOTO" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
@@ -205,25 +197,35 @@ public class WhatsAppController {
 
 
                 case "ASK_VOICE" -> {
+                    // Upload voice if available
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
                         try {
-                            // Download the voice media from Twilio with authentication
                             InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-
-                            // Upload directly to Cloudinary under the "complaints/voice" folder
                             String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
-
-                            // Save the uploaded URL in the session
                             session.setTempVoiceUrl(uploadedUrl);
                         } catch (Exception e) {
                             e.printStackTrace();
-                            // Optional: notify user something went wrong with the upload
                             session.setTempVoiceUrl(null);
                         }
                     }
 
+                    // Determine priority once
+                    com.example.civic_issue.enums.Priority priority = complaintService.getPriority(
+                            session.getTempTitle(),
+                            session.getTempDescription(),
+                            session.getTempPhotoUrl()
+                    );
 
-                    // Save complaint
+                    // Determine due date based on priority
+                    LocalDateTime dueDate;
+                    switch (priority) {
+                        case LOW -> dueDate = LocalDateTime.now().plusMonths(3);
+                        case MEDIUM -> dueDate = LocalDateTime.now().plusDays(7);
+                        case HIGH -> dueDate = LocalDateTime.now().plusDays(3);
+                        default -> dueDate = LocalDateTime.now().plusDays(7);
+                    }
+
+                    // Build complaint after URLs and priority are ready
                     Complaint complaint = Complaint.builder()
                             .title(session.getTempTitle())
                             .description(session.getTempDescription())
@@ -233,23 +235,29 @@ public class WhatsAppController {
                             .address(locationService.getAddressFromCoordinates(user.getLatitude(), user.getLongitude()))
                             .photoUrl(session.getTempPhotoUrl())
                             .voiceUrl(session.getTempVoiceUrl())
-                            .priority(complaintService.getPriority(
-                                    session.getTempTitle(),
-                                    session.getTempDescription(),
-                                    session.getTempPhotoUrl()))
+                            .priority(priority)
                             .status(com.example.civic_issue.enums.ComplaintStatus.PENDING)
                             .createdAt(LocalDateTime.now())
+                            .dueDate(dueDate)
                             .user(user)
+                            .department(complaintService.getDepartmentByName(session.getTempCategory()))
+
+                            .assignedTo(null)
                             .build();
 
-                    User head = departmentAssignmentService.getDepartmentHeadForCategory(session.getTempCategory());
+                    // Assign department head if available
+                    Department department = complaintService.getDepartmentByName(session.getTempCategory());
+                    User head = departmentAssignmentService.getDepartmentHeadForDepartment(department);
+
                     if (head != null) {
                         complaint.setAssignedTo(head);
                         complaint.setAssignedAt(LocalDateTime.now());
                     }
 
+                    // Save complaint in DB
                     complaintService.saveComplaint(complaint);
 
+                    // Mark session as DONE
                     session.setStep("DONE");
                     sessionRepository.save(session);
 
