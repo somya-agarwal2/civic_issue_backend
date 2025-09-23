@@ -91,14 +91,22 @@ public class GeminiService {
             JSONArray candidates = json.optJSONArray("candidates");
 
             if (candidates != null && candidates.length() > 0) {
-                String priorityText = candidates.getJSONObject(0).optString("content", "").trim().toUpperCase();
+                JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
+                if (content != null) {
+                    JSONArray parts = content.optJSONArray("parts");
+                    if (parts != null && parts.length() > 0) {
+                        String priorityText = parts.getJSONObject(0).optString("text", "")
+                                .trim()
+                                .toUpperCase();
 
-                return switch (priorityText) {
-                    case "HIGH" -> Priority.HIGH;
-                    case "MEDIUM" -> Priority.MEDIUM;
-                    case "LOW" -> Priority.LOW;
-                    default -> Priority.LOW;
-                };
+                        return switch (priorityText) {
+                            case "HIGH" -> Priority.HIGH;
+                            case "MEDIUM" -> Priority.MEDIUM;
+                            case "LOW" -> Priority.LOW;
+                            default -> Priority.LOW;
+                        };
+                    }
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

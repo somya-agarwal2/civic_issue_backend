@@ -5,6 +5,7 @@ import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -15,22 +16,26 @@ public class WhatsAppCloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    /**
-     * Uploads a file from an InputStream to Cloudinary.
-     * Works for both photos and voice notes.
-     *
-     * @param inputStream InputStream of the file
-     * @param folder      Cloudinary folder, e.g., "complaints/photos" or "complaints/voice"
-     * @return Secure URL of uploaded file
-     */
     public String uploadFile(InputStream inputStream, String folder) {
         if (inputStream == null) {
             throw new IllegalArgumentException("InputStream must not be null");
         }
 
         try {
+            // Convert InputStream -> byte[]
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] data = new byte[8192];
+            int nRead;
+            while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+
+            byte[] bytes = buffer.toByteArray();
+
+            // Upload to Cloudinary
             Map<?, ?> uploadResult = cloudinary.uploader().upload(
-                    inputStream,
+                    bytes,
                     ObjectUtils.asMap(
                             "folder", folder,
                             "resource_type", "auto"

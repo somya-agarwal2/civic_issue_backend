@@ -181,21 +181,47 @@ public class WhatsAppController {
 
                 case "ASK_PHOTO" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
-                        InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
-                        session.setTempPhotoUrl(uploadedUrl);
+                        try {
+                            // Download the media from Twilio with authentication
+                            InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
+
+                            // Upload directly to Cloudinary under the "complaints/photos" folder
+                            String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/photos");
+
+                            // Save the uploaded URL in the session
+                            session.setTempPhotoUrl(uploadedUrl);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // Optional: notify user something went wrong with the upload
+                            session.setTempPhotoUrl(null);
+                        }
                     }
+
+
                     session.setStep("ASK_VOICE");
                     sessionRepository.save(session);
                     twiml = buildMessage("🎤 You can upload a voice note (optional). Send 'Skip' to continue.");
                 }
 
+
                 case "ASK_VOICE" -> {
                     if (!msg.equalsIgnoreCase("Skip") && mediaUrl != null) {
-                        InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
-                        String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
-                        session.setTempVoiceUrl(uploadedUrl); // ✅ Correct property
+                        try {
+                            // Download the voice media from Twilio with authentication
+                            InputStream inputStream = getTwilioMedia(mediaUrl, twilioAccountSid, twilioAuthToken);
+
+                            // Upload directly to Cloudinary under the "complaints/voice" folder
+                            String uploadedUrl = cloudinaryService.uploadFile(inputStream, "complaints/voice");
+
+                            // Save the uploaded URL in the session
+                            session.setTempVoiceUrl(uploadedUrl);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // Optional: notify user something went wrong with the upload
+                            session.setTempVoiceUrl(null);
+                        }
                     }
+
 
                     // Save complaint
                     Complaint complaint = Complaint.builder()
