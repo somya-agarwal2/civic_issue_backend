@@ -317,8 +317,9 @@ public class ComplaintController {
         return ResponseEntity.ok(response);
     }
 
+    // Replace this in ComplaintController.java
     @PutMapping("/{id}/status")
-    public ResponseEntity<Complaint> updateStatus(
+    public ResponseEntity<ComplaintResponse> updateStatus(
             @PathVariable Long id,
             @RequestParam ComplaintStatus status) {
 
@@ -330,13 +331,27 @@ public class ComplaintController {
         if (status == ComplaintStatus.RESOLVED) {
             complaint.setResolvedAt(LocalDateTime.now());
         } else {
-            complaint.setResolvedAt(null); // optional: clear if status changes back
+            complaint.setResolvedAt(null);
         }
 
         complaintRepository.save(complaint);
 
-        return ResponseEntity.ok(complaint);
+        // Map to DTO
+        ComplaintResponse response = ComplaintResponse.builder()
+                .id(complaint.getId())
+                .title(complaint.getTitle())
+                .description(complaint.getDescription())
+                .status(complaint.getStatus().name())
+                .priority(complaint.getPriority().name())
+                .createdAt(complaint.getCreatedAt().toString())
+                .dueDate(complaint.getDueDate() != null ? complaint.getDueDate().toString() : null)
+                .departmentId(complaint.getDepartment() != null ? complaint.getDepartment().getId() : null)
+                .assignedTo(complaint.getAssignedTo() != null ? complaint.getAssignedTo().getFullName() : null)
+                .build();
+
+        return ResponseEntity.ok(response);
     }
+
     @GetMapping("/my-complaints")
     public ResponseEntity<?> getCitizenComplaints(
             @RequestHeader("Authorization") String authHeader,

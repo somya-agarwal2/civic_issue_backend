@@ -91,17 +91,19 @@ public class DashboardService {
         );
 
         // ----- LINE DATA -----
+        int currentMonth = LocalDateTime.now().getMonthValue();
         Map<String, Map<String, Long>> monthlyMap = new LinkedHashMap<>();
-        // initialize months Jan-Jun
-        for (int i = 1; i <= 6; i++) {
+
+// Dynamically initialize months up to current month
+        for (int i = 1; i <= currentMonth; i++) {
             String monthName = LocalDateTime.now().withMonth(i).getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
             monthlyMap.put(monthName, Map.of("Pending", 0L, "Resolved", 0L));
         }
 
-        // Count complaints per month
+// Count complaints per month
         for (Complaint c : allComplaints) {
             LocalDateTime created = c.getCreatedAt();
-            if (created != null && created.getMonthValue() <= 6) { // Jan-Jun
+            if (created != null && created.getMonthValue() <= currentMonth) {
                 String monthName = created.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                 Map<String, Long> counts = new HashMap<>(monthlyMap.get(monthName));
                 if (c.getStatus() == ComplaintStatus.PENDING) counts.put("Pending", counts.get("Pending") + 1);

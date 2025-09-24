@@ -127,7 +127,6 @@ public class ReportController {
                 .departmentId(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
                         ? complaint.getAssignedTo().getDepartment().getId()
                         : null)
-
                 .address(complaint.getAddress())
                 .latitude(complaint.getLatitude())
                 .longitude(complaint.getLongitude())
@@ -137,6 +136,7 @@ public class ReportController {
                 .priority(complaint.getPriority() != null ? complaint.getPriority().name() : null)
                 .status(complaint.getStatus() != null ? complaint.getStatus().name() : null)
                 .dueDate(complaint.getDueDate() != null ? complaint.getDueDate().toString() : null)
+                .assignedTo(complaint.getAssignedTo() != null ? complaint.getAssignedTo().getFullName() : null) // <-- add this line
                 .assignedToDepartment(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
                         ? complaint.getAssignedTo().getDepartment().getName()
                         : null)
