@@ -49,7 +49,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     // -------------------------------
     List<Complaint> findByUser_Id(Long userId);
 
-    List<Complaint> findByUser(User user);
+
 
     // -------------------------------
     // By status + department
@@ -68,6 +68,9 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
             @Param("status") ComplaintStatus status,
             @Param("departmentId") Long departmentId
     );
+    List<Complaint> findByUser(User user);
+
+    List<Complaint> findByUserAndStatus(User user, ComplaintStatus status);
 
     // -------------------------------
     // Ordered by creation date (most recent first)

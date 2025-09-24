@@ -17,6 +17,7 @@ import com.example.civic_issue.repo.DepartmentRepository;
 import com.example.civic_issue.repo.UserRepository;
 import com.example.civic_issue.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,12 +46,17 @@ public class ComplaintController {
 
 
     // ================== CREATE COMPLAINT ==================
-    @PostMapping("/create")
+    @PostMapping(
+            value = "/create",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<?> createComplaintMultipart(
             @RequestHeader("Authorization") String authHeader,
-            @RequestPart("data") ComplaintRequest complaintRequest,
-            @RequestPart(value = "photo", required = false) MultipartFile photoFile,
-            @RequestPart(value = "voice", required = false) MultipartFile voiceFile
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("departmentId") Long departmentId,
+            @RequestParam(value = "photo", required = false) MultipartFile photoFile,
+            @RequestParam(value = "voice", required = false) MultipartFile voiceFile
     ) {
         try {
             String token = authHeader.substring(7);
@@ -63,7 +69,7 @@ public class ComplaintController {
                 return ResponseEntity.status(403).body(new SimpleResponse(false, "Only citizens can file complaints"));
             }
 
-            Department department = departmentRepository.findById(complaintRequest.getDepartmentId())
+            Department department = departmentRepository.findById(departmentId)
                     .orElseThrow(() -> new RuntimeException("Department not found"));
 
             // Upload files to Cloudinary
@@ -77,10 +83,10 @@ public class ComplaintController {
                 voiceUrl = cloudinaryService.uploadMultipartFile(voiceFile, "complaints/voices");
             }
 
-            // Determine priority
+            // Determine priority with AI service
             Priority priority = geminiService.determinePriority(
-                    complaintRequest.getTitle(),
-                    complaintRequest.getDescription(),
+                    title,
+                    description,
                     photoUrl
             );
 
@@ -90,11 +96,14 @@ public class ComplaintController {
                 case LOW -> LocalDateTime.now().plusMonths(3);
             };
 
-            String fetchedAddress = locationService.getAddressFromCoordinates(citizen.getLatitude(), citizen.getLongitude());
+            String fetchedAddress = locationService.getAddressFromCoordinates(
+                    citizen.getLatitude(),
+                    citizen.getLongitude()
+            );
 
             Complaint complaint = Complaint.builder()
-                    .title(complaintRequest.getTitle())
-                    .description(complaintRequest.getDescription())
+                    .title(title)
+                    .description(description)
                     .department(department)
                     .address(fetchedAddress)
                     .latitude(citizen.getLatitude())
@@ -119,9 +128,17 @@ public class ComplaintController {
 
             // Build timeline
             List<ComplaintResponse.TimelineEvent> timeline = new ArrayList<>();
-            timeline.add(new ComplaintResponse.TimelineEvent(saved.getCreatedAt().toString(), "Report submitted", citizen.getFullName()));
+            timeline.add(new ComplaintResponse.TimelineEvent(
+                    saved.getCreatedAt().toString(),
+                    "Report submitted",
+                    citizen.getFullName()
+            ));
             if (saved.getAssignedTo() != null) {
-                timeline.add(new ComplaintResponse.TimelineEvent(saved.getAssignedAt().toString(), "Report assigned", saved.getAssignedTo().getFullName()));
+                timeline.add(new ComplaintResponse.TimelineEvent(
+                        saved.getAssignedAt().toString(),
+                        "Report assigned",
+                        saved.getAssignedTo().getFullName()
+                ));
             }
 
             ComplaintResponse response = ComplaintResponse.builder()
@@ -300,6 +317,50 @@ public class ComplaintController {
         response.put("estimatedResolution", complaint.getDueDate() != null ? complaint.getDueDate().toLocalDate().toString() : "N/A");
 
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/my-complaints")
+    public ResponseEntity<?> getCitizenComplaints(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(value = "status", required = false) ComplaintStatus status
+    ) {
+        try {
+            String token = authHeader.substring(7);
+            String phoneNumber = jwtUtil.extractPhoneNumber(token);
+
+            User citizen = userRepository.findByPhoneNumber(phoneNumber)
+                    .orElseThrow(() -> new RuntimeException("Citizen not found"));
+
+            if (citizen.getRole() != Role.CITIZEN) {
+                return ResponseEntity.status(403).body(new SimpleResponse(false, "Only citizens can view their complaints"));
+            }
+
+            List<Complaint> complaints;
+            if (status != null) {
+                complaints = complaintRepository.findByUserAndStatus(citizen, status);
+            } else {
+                complaints = complaintRepository.findByUser(citizen);
+            }
+
+            // Convert to response DTOs
+            List<ComplaintResponse> responses = complaints.stream().map(c -> ComplaintResponse.builder()
+                    .id(c.getId())
+                    .title(c.getTitle())
+                    .description(c.getDescription())
+                    .status(c.getStatus().name())
+                    .priority(c.getPriority().name())
+                    .createdAt(c.getCreatedAt().toString())
+                    .dueDate(c.getDueDate() != null ? c.getDueDate().toString() : null)
+                    .departmentId(c.getDepartment() != null ? c.getDepartment().getId() : null)
+                    .assignedTo(c.getAssignedTo() != null ? c.getAssignedTo().getFullName() : null)
+                    .build()
+            ).toList();
+
+            return ResponseEntity.ok(responses);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to fetch complaints: " + e.getMessage()));
+        }
     }
 
     // ================== RESPONSE RECORD ==================
