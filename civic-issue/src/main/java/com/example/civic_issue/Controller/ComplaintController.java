@@ -404,17 +404,23 @@ public class ComplaintController {
             @RequestParam("longitude") double longitude,
             @RequestParam(value = "radius", defaultValue = "500") double radiusMeters
     ) {
-    // Get all complaints (or optimize with a DB spatial query if possible)
-    List<Complaint> allComplaints = complaintRepository.findAll();
+        // Get current citizen from token
+        String token = authHeader.substring(7);
+        String phoneNumber = jwtUtil.extractPhoneNumber(token);
+        User citizen = userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new RuntimeException("Citizen not found"));
 
-    List<ComplaintResponse> nearby = allComplaints.stream()
-            .filter(c -> c.getLatitude() != null && c.getLongitude() != null)
-            .filter(c -> haversineDistance(latitude, longitude, c.getLatitude(), c.getLongitude()) <= radiusMeters)
-            .map(this::mapToDTO)
-            .toList();
+        List<Complaint> allComplaints = complaintRepository.findAll();
 
-    return ResponseEntity.ok(nearby);
-}
+        List<ComplaintResponse> nearby = allComplaints.stream()
+                .filter(c -> c.getLatitude() != null && c.getLongitude() != null)
+                .filter(c -> haversineDistance(latitude, longitude, c.getLatitude(), c.getLongitude()) <= radiusMeters)
+                .filter(c -> !c.getUser().getId().equals(citizen.getId())) // Exclude own reports
+                .map(this::mapToDTO)
+                .toList();
+
+        return ResponseEntity.ok(nearby);
+    }
     // Add this inside ComplaintController.java
     private ComplaintResponse mapToDTO(Complaint complaint) {
         return ComplaintResponse.builder()
