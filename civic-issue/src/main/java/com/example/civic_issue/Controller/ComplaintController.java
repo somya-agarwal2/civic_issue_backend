@@ -318,6 +318,20 @@ public class ComplaintController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Complaint> updateStatus(
+            @PathVariable Long id,
+            @RequestParam ComplaintStatus status) {
+
+        Complaint complaint = complaintRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Complaint not found"));
+
+        complaint.setStatus(status);
+        complaintRepository.save(complaint);
+
+        return ResponseEntity.ok(complaint);
+    }
     @GetMapping("/my-complaints")
     public ResponseEntity<?> getCitizenComplaints(
             @RequestHeader("Authorization") String authHeader,
