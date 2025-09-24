@@ -396,7 +396,60 @@ public class ComplaintController {
             return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to fetch complaints: " + e.getMessage()));
         }
     }
+    @GetMapping("/nearby")
+    public ResponseEntity<?> getNearbyComplaints(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("latitude") double latitude,
+            @RequestParam("longitude") double longitude,
+            @RequestParam(value = "radius", defaultValue = "500") double radiusMeters
+    ) {
+    // Get all complaints (or optimize with a DB spatial query if possible)
+    List<Complaint> allComplaints = complaintRepository.findAll();
 
+    List<ComplaintResponse> nearby = allComplaints.stream()
+            .filter(c -> c.getLatitude() != null && c.getLongitude() != null)
+            .filter(c -> haversineDistance(latitude, longitude, c.getLatitude(), c.getLongitude()) <= radiusMeters)
+            .map(this::mapToDTO)
+            .toList();
+
+    return ResponseEntity.ok(nearby);
+}
+    // Add this inside ComplaintController.java
+    private ComplaintResponse mapToDTO(Complaint complaint) {
+        return ComplaintResponse.builder()
+                .id(complaint.getId())
+                .title(complaint.getTitle())
+                .description(complaint.getDescription())
+                .departmentId(complaint.getDepartment() != null ? complaint.getDepartment().getId() : null)
+                .departmentName(complaint.getDepartment() != null ? complaint.getDepartment().getName() : null)
+                .address(complaint.getAddress())
+                .latitude(complaint.getLatitude())
+                .longitude(complaint.getLongitude())
+                .photoUrl(complaint.getPhotoUrl())
+                .voiceUrl(complaint.getVoiceUrl())
+                .createdAt(complaint.getCreatedAt() != null ? complaint.getCreatedAt().toString() : null)
+                .priority(complaint.getPriority() != null ? complaint.getPriority().name() : null)
+                .status(complaint.getStatus() != null ? complaint.getStatus().name() : null)
+                .dueDate(complaint.getDueDate() != null ? complaint.getDueDate().toString() : null)
+                .assignedTo(complaint.getAssignedTo() != null ? complaint.getAssignedTo().getFullName() : null)
+                .assignedToDepartment(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
+                        ? complaint.getAssignedTo().getDepartment().getName()
+                        : null)
+                .build();
+    }
+
+
+// Haversine formula to calculate distance in meters
+private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+    final int R = 6371000; // Earth radius in meters
+    double dLat = Math.toRadians(lat2 - lat1);
+    double dLon = Math.toRadians(lon2 - lon1);
+    double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
 
     // ================== RESPONSE RECORD ==================
     record SimpleResponse(boolean success, String message) {}

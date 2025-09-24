@@ -21,6 +21,9 @@ public class ComplaintResponse {
     private Double longitude;
     private String photoUrl;
     private String voiceUrl;
+    // Add this field
+    private String resolvedAt;
+
     private String createdAt;
     private String priority; // enum type
     private String status;   // ComplaintStatus

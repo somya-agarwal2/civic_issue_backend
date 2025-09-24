@@ -119,7 +119,12 @@ public class ReportController {
         }
     }
 
+
     private ComplaintResponse mapToDTO(Complaint complaint) {
+        String assignedToName = null;
+        if (complaint.getAssignedTo() != null && complaint.getAssignedTo().getRole() == Role.OPERATOR) {
+            assignedToName = complaint.getAssignedTo().getFullName();
+        }
         return ComplaintResponse.builder()
                 .id(complaint.getId())
                 .title(complaint.getTitle())
@@ -127,19 +132,21 @@ public class ReportController {
                 .departmentId(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
                         ? complaint.getAssignedTo().getDepartment().getId()
                         : null)
-                .address(complaint.getAddress())
-                .latitude(complaint.getLatitude())
-                .longitude(complaint.getLongitude())
-                .photoUrl(complaint.getPhotoUrl())
-                .voiceUrl(complaint.getVoiceUrl())
-                .createdAt(complaint.getCreatedAt().toString())
-                .priority(complaint.getPriority() != null ? complaint.getPriority().name() : null)
-                .status(complaint.getStatus() != null ? complaint.getStatus().name() : null)
-                .dueDate(complaint.getDueDate() != null ? complaint.getDueDate().toString() : null)
-                .assignedTo(complaint.getAssignedTo() != null ? complaint.getAssignedTo().getFullName() : null) // <-- add this line
-                .assignedToDepartment(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
-                        ? complaint.getAssignedTo().getDepartment().getName()
-                        : null)
-                .build();
-    }
+            .address(complaint.getAddress())
+            .latitude(complaint.getLatitude())
+            .longitude(complaint.getLongitude())
+            .photoUrl(complaint.getPhotoUrl())
+            .voiceUrl(complaint.getVoiceUrl())
+            .resolvedAt(complaint.getResolvedAt() != null ? complaint.getResolvedAt().toString() : null)
+            .createdAt(complaint.getCreatedAt().toString())
+            .priority(complaint.getPriority() != null ? complaint.getPriority().name() : null)
+            .status(complaint.getStatus() != null ? complaint.getStatus().name() : null)
+            .dueDate(complaint.getDueDate() != null ? complaint.getDueDate().toString() : null)
+            .assignedTo(assignedToName)
+            .assignedToDepartment(complaint.getAssignedTo() != null && complaint.getAssignedTo().getDepartment() != null
+            ? complaint.getAssignedTo().getDepartment().getName()
+                    : null)
+                            .build();
 }
+    }
+
