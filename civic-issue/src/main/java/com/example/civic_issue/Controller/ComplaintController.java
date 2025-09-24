@@ -328,6 +328,13 @@ public class ComplaintController {
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
 
         complaint.setStatus(status);
+
+        if (status == ComplaintStatus.RESOLVED) {
+            complaint.setResolvedAt(LocalDateTime.now());
+        } else {
+            complaint.setResolvedAt(null); // optional: clear if status changes back
+        }
+
         complaintRepository.save(complaint);
 
         return ResponseEntity.ok(complaint);
