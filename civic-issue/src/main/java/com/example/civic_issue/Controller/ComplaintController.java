@@ -396,6 +396,7 @@ public class ComplaintController {
             return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to fetch complaints: " + e.getMessage()));
         }
     }
+
     @GetMapping("/nearby")
     public ResponseEntity<?> getNearbyComplaints(
             @RequestHeader("Authorization") String authHeader,
