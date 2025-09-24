@@ -2,6 +2,7 @@ package com.example.civic_issue.Model;
 
 import com.example.civic_issue.enums.Role;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -55,7 +56,9 @@ public class User {
 
     // Complaints assigned to this user (operators or department head)
     @OneToMany(mappedBy = "assignedTo")
+    @JsonIgnore   // prevents serializing assignedComplaints back to user
     private List<Complaint> assignedComplaints;
+
 
     // ✅ New fields
     private String email;           // Operator/Head email

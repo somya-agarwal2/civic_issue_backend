@@ -3,6 +3,7 @@ package com.example.civic_issue.Controller;
 import com.example.civic_issue.Model.Complaint;
 import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
+import com.example.civic_issue.Service.ComplaintService;
 import com.example.civic_issue.dto.DepartmentDetailsResponse;
 import com.example.civic_issue.dto.DepartmentRequest;
 import com.example.civic_issue.dto.DepartmentResponse;
@@ -33,6 +34,7 @@ public class DepartmentController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final ComplaintRepository complaintRepository;
+    private final ComplaintService complaintService;
 
     // ---------------- HELPER ----------------
     private User getAuthorizedUser(String authHeader, Role requiredRole) {
@@ -261,6 +263,7 @@ public class DepartmentController {
 
         return ResponseEntity.ok(response);
     }
+
 
     // ================== RESPONSE RECORD ==================
     private record SimpleResponse(boolean success, String message) {}

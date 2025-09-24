@@ -1,5 +1,6 @@
 package com.example.civic_issue.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,7 +27,8 @@ public class Department {
     // Head of the department
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "head_id")
-    private User head;             // User object stores fullName, email, phone, password
+    @JsonIgnoreProperties({"assignedComplaints", "password"})
+    private User head;
 
     // Operators under this department
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL)

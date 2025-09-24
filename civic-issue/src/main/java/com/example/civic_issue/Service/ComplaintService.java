@@ -78,6 +78,7 @@ public class ComplaintService {
     /**
      * Fetch a department by its name.
      */
+
     public Department getDepartmentByName(String departmentName) {
         return departmentRepository.findByName(departmentName)
                 .orElseThrow(() -> new RuntimeException(

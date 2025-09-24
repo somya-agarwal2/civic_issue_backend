@@ -3,10 +3,7 @@ package com.example.civic_issue.Controller;
 import com.example.civic_issue.Model.Complaint;
 import com.example.civic_issue.Model.Department;
 import com.example.civic_issue.Model.User;
-import com.example.civic_issue.Service.CloudinaryService;
-import com.example.civic_issue.Service.DepartmentAssignmentService;
-import com.example.civic_issue.Service.GeminiService;
-import com.example.civic_issue.Service.LocationService;
+import com.example.civic_issue.Service.*;
 import com.example.civic_issue.dto.ComplaintRequest;
 import com.example.civic_issue.dto.ComplaintResponse;
 import com.example.civic_issue.enums.ComplaintStatus;
@@ -43,6 +40,7 @@ public class ComplaintController {
     private final DepartmentAssignmentService departmentAssignmentService;
     private final LocationService locationService;
     private final DepartmentRepository departmentRepository;
+    private final ComplaintService complaintService;
 
 
     // ================== CREATE COMPLAINT ==================
@@ -383,6 +381,7 @@ public class ComplaintController {
             return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to fetch complaints: " + e.getMessage()));
         }
     }
+
 
     // ================== RESPONSE RECORD ==================
     record SimpleResponse(boolean success, String message) {}
