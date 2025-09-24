@@ -265,43 +265,42 @@ public class ComplaintController {
     }
     @GetMapping("/{id}")
     public ResponseEntity<?> getReportDetails(@PathVariable Long id) {
-        Complaint complaint = complaintRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Report not found"));
+        try {
+            Complaint complaint = complaintRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Report not found"));
 
-        // Prepare attachments list (example: photo + voice)
-        List<Map<String, Object>> attachments = new ArrayList<>();
-        if (complaint.getPhotoUrl() != null) {
-            attachments.add(Map.of(
-                    "id", 1,
-                    "name", "photo",
-                    "url", complaint.getPhotoUrl(),
-                    "type", "image"
-            ));
-        }
+            List<Map<String, Object>> attachments = new ArrayList<>();
+            if (complaint.getPhotoUrl() != null) {
+                attachments.add(Map.of(
+                        "id", 1,
+                        "name", "photo",
+                        "url", complaint.getPhotoUrl(),
+                        "type", "image"
+                ));
+
+    }
         if (complaint.getVoiceUrl() != null) {
-            attachments.add(Map.of(
-                    "id", 2,
-                    "name", "voice",
-                    "url", complaint.getVoiceUrl(),
-                    "type", "audio"
-            ));
-        }
+        attachments.add(Map.of(
+                "id", 2,
+                "name", "voice",
+                "url", complaint.getVoiceUrl(),
+                "type", "audio"
+        ));
+    }
 
-        // Prepare timeline
-        List<Map<String, Object>> timeline = new ArrayList<>();
+    List<Map<String, Object>> timeline = new ArrayList<>();
         timeline.add(Map.of(
                 "date", complaint.getCreatedAt() != null ? complaint.getCreatedAt().toLocalDate().toString() : null,
-                "action", "Report submitted",
-                "by", complaint.getUser() != null ? complaint.getUser().getFullName() : "Unknown"
-        ));
-        if (complaint.getAssignedTo() != null) {
-            timeline.add(Map.of(
-                    "date", complaint.getAssignedAt() != null ? complaint.getAssignedAt().toLocalDate().toString() : null,
-                    "action", "Report assigned",
-                    "by", complaint.getAssignedTo().getFullName()
+            "action", "Report submitted",
+            "by", complaint.getUser() != null ? complaint.getUser().getFullName() : "Unknown"
             ));
-        }
-
+        if (complaint.getAssignedTo() != null) {
+        timeline.add(Map.of(
+                "date", complaint.getAssignedAt() != null ? complaint.getAssignedAt().toLocalDate().toString() : null,
+                "action", "Report assigned",
+                "by", complaint.getAssignedTo().getFullName()
+        ));
+    }
         Map<String, Object> response = new HashMap<>();
         response.put("id", "R" + complaint.getId());
         response.put("title", complaint.getTitle());
@@ -315,7 +314,10 @@ public class ComplaintController {
         response.put("estimatedResolution", complaint.getDueDate() != null ? complaint.getDueDate().toLocalDate().toString() : "N/A");
 
         return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
     }
+}
 
     // Replace this in ComplaintController.java
     @PutMapping("/{id}/status")
