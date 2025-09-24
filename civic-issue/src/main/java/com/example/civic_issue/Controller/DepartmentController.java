@@ -97,15 +97,28 @@ public class DepartmentController {
             res.setManager(head != null ? head.getFullName() : null);
             res.setAddress(dept.getAddress());
 
-            // Stats placeholders
-            res.setOpenReports(0);
-            res.setActiveReports(0);
-            res.setResolvedLast30Days(0);
-            res.setAvgResolutionTime("N/A");
+            /// Fetch complaints for this department
+            List<Complaint> complaints = complaintRepository.findByDepartment_Id(dept.getId());
+
+            // Calculate average resolution time (in days)
+            double avgResolutionDays = complaints.stream()
+                    .filter(c -> c.getStatus() == ComplaintStatus.RESOLVED && c.getResolvedAt() != null && c.getCreatedAt() != null)
+                    .mapToDouble(c -> Duration.between(c.getCreatedAt(), c.getResolvedAt()).toHours() / 24.0)
+                    .average()
+                    .orElse(0.0);
+
+            res.setAvgResolutionTime(avgResolutionDays > 0 ? String.format("%.1f days", avgResolutionDays) : "N/A");
+
+            // Stats placeholders (update as needed)
+            res.setOpenReports((int) complaints.stream().filter(c -> c.getStatus() == ComplaintStatus.PENDING).count());
+            res.setActiveReports((int) complaints.stream().filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS).count());
+            res.setResolvedLast30Days((int) complaints.stream()
+                    .filter(c -> c.getStatus() == ComplaintStatus.RESOLVED)
+                    .filter(c -> c.getResolvedAt() != null && c.getResolvedAt().isAfter(LocalDateTime.now().minusDays(30)))
+                    .count());
 
             return res;
         }).toList();
-
         return ResponseEntity.ok(response);
     }
 
