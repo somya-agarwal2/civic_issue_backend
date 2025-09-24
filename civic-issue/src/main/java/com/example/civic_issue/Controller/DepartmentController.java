@@ -277,7 +277,22 @@ public class DepartmentController {
         return ResponseEntity.ok(response);
     }
 
-
+    @GetMapping("/public/list")
+    public ResponseEntity<?> publicListDepartments() {
+        List<DepartmentResponse> response = departmentRepository.findAll().stream().map(dept -> {
+            User head = dept.getHead();
+            DepartmentResponse res = new DepartmentResponse();
+            res.setId(dept.getId());
+            res.setName(dept.getName());
+            res.setDescription(dept.getDescription());
+            res.setEmail(head != null ? head.getEmail() : null);
+            res.setPhone(head != null ? head.getPhoneNumber() : null);
+            res.setManager(head != null ? head.getFullName() : null);
+            res.setAddress(dept.getAddress());
+            return res;
+        }).toList();
+        return ResponseEntity.ok(response);
+    }
     // ================== RESPONSE RECORD ==================
     private record SimpleResponse(boolean success, String message) {}
 }
