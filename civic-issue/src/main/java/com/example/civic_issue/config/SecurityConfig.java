@@ -34,7 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/auth/admin-login").permitAll()
                         .requestMatchers("/whatsapp/**").permitAll()
-                        .requestMatchers("/admin/**").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR")
+                        .requestMatchers("/admin/**").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR","CITIZEN")
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/complaints/create").hasAuthority("CITIZEN")
                         .requestMatchers("/api/complaints/update-status/**").hasAnyAuthority("SUPER_ADMIN","DEPARTMENT_HEAD","OPERATOR")
