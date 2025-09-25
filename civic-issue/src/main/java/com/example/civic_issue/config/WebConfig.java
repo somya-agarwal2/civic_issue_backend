@@ -18,7 +18,7 @@ public class WebConfig {
                         .allowedOrigins(
                                 "http://localhost:5173",       // local frontend
                                 "http://localhost:3000" ,
-                                "https://civic-sense-admin.vercel.app/"
+                                "https://civic-sense-admin.vercel.app"
 
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
