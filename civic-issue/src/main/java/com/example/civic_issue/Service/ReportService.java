@@ -18,8 +18,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReportService {
 
-    @Value("${similarity.service.url}")
-    private String similarityUrl;
+
+    @Value("${similarity.service.apiKey}")
+    private String apiKey2;
 
     private final ComplaintRepository complaintRepository;
 
@@ -76,13 +77,25 @@ public class ReportService {
         return c1.getPhotoUrl().equals(c2.getPhotoUrl());
     }
 
+
     public double getSemanticSimilarity(String text1, String text2) {
         RestTemplate restTemplate = new RestTemplate();
-        Map<String, Object> payload = Map.of("sentences", List.of(text1, text2));
+        String hfUrl = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2";
+        String apiKey = apiKey2; // Store securely
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+
+        Map<String, Object> payload = Map.of("inputs", List.of(text1, text2));
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(similarityUrl, request, Map.class);
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(hfUrl, request, Map.class);
+        // Parse similarity from response (depends on model output)
+        // Example: double similarity = (Double) response.getBody().get("similarity");
+        // Adjust parsing as per actual response structure
         return (Double) response.getBody().get("similarity");}
+
+
 }
 
