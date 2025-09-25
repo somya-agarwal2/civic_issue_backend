@@ -81,20 +81,26 @@ public class ReportService {
     public double getSemanticSimilarity(String text1, String text2) {
         RestTemplate restTemplate = new RestTemplate();
         String hfUrl = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2";
-        String apiKey = apiKey2; // Store securely
+        String apiKey = apiKey2;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        Map<String, Object> payload = Map.of("inputs", List.of(text1, text2));
+        Map<String, Object> payload = Map.of(
+                "inputs", Map.of(
+                        "source_sentence", text1,
+                        "sentences", List.of(text2)
+                )
+        );
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
         ResponseEntity<Map> response = restTemplate.postForEntity(hfUrl, request, Map.class);
-        // Parse similarity from response (depends on model output)
-        // Example: double similarity = (Double) response.getBody().get("similarity");
-        // Adjust parsing as per actual response structure
-        return (Double) response.getBody().get("similarity");}
+        // The response contains a "score" key with a list of similarity scores
+        List<?> scores = (List<?>) response.getBody().get("score");
+        return scores != null && !scores.isEmpty() ? Double.valueOf(scores.get(0).toString()) : 0.0;
+    }
+
 
 
 }
