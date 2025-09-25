@@ -41,6 +41,7 @@ public class ComplaintController {
     private final LocationService locationService;
     private final DepartmentRepository departmentRepository;
     private final ComplaintService complaintService;
+    private final ReportService reportService;
 
 
     // ================== CREATE COMPLAINT ==================
@@ -122,7 +123,7 @@ public class ComplaintController {
                 complaint.setAssignedAt(LocalDateTime.now());
             }
 
-            Complaint saved = complaintRepository.save(complaint);
+            Complaint saved=reportService.addOrMergeComplaint(complaint);
 
             // Build timeline
             List<ComplaintResponse.TimelineEvent> timeline = new ArrayList<>();
@@ -165,7 +166,6 @@ public class ComplaintController {
             return ResponseEntity.badRequest().body(new SimpleResponse(false, "Failed to create complaint: " + e.getMessage()));
         }
     }
-
 
     @GetMapping("/assigned-reports")
     public ResponseEntity<?> getAssignedReports(@RequestHeader("Authorization") String authHeader) {
