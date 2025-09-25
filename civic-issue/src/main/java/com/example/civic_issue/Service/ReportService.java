@@ -86,6 +86,7 @@ public class ReportService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON)); // Add this line
 
         Map<String, Object> payload = Map.of(
                 "inputs", Map.of(
@@ -96,10 +97,10 @@ public class ReportService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
         ResponseEntity<Map> response = restTemplate.postForEntity(hfUrl, request, Map.class);
-        // The response contains a "score" key with a list of similarity scores
         List<?> scores = (List<?>) response.getBody().get("score");
         return scores != null && !scores.isEmpty() ? Double.valueOf(scores.get(0).toString()) : 0.0;
     }
+
 
 
 
