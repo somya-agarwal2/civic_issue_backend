@@ -66,7 +66,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         // ✅ Apply to all endpoints
-        source.registerCorsConfiguration("/", configuration);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
