@@ -1,6 +1,8 @@
 package com.example.civic_issue.Service;
 
 
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.example.civic_issue.Model.Complaint;
 import com.example.civic_issue.repo.ComplaintRepository;
@@ -15,6 +17,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
+
+    @Value("${similarity.service.url}")
+    private String similarityUrl;
 
     private final ComplaintRepository complaintRepository;
 
@@ -73,12 +78,11 @@ public class ReportService {
 
     public double getSemanticSimilarity(String text1, String text2) {
         RestTemplate restTemplate = new RestTemplate();
-        String url = "http://localhost:5000/similarity";
         Map<String, Object> payload = Map.of("sentences", List.of(text1, text2));
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        ResponseEntity<Map> response = restTemplate.postForEntity(similarityUrl, request, Map.class);
         return (Double) response.getBody().get("similarity");}
 }
 
