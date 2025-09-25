@@ -17,7 +17,8 @@ public class WebConfig {
                         // allow your local frontend + any other services
                         .allowedOrigins(
                                 "http://localhost:5173",       // local frontend
-                                "http://localhost:3000"      // if you test with React dev server
+                                "http://localhost:3000" ,
+                                "https://civic-sense-admin.vercel.app/"
 
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
