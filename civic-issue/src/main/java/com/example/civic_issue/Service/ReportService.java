@@ -86,7 +86,7 @@ public class ReportService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON)); // Add this line
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
         Map<String, Object> payload = Map.of(
                 "inputs", Map.of(
@@ -94,11 +94,24 @@ public class ReportService {
                         "sentences", List.of(text2)
                 )
         );
+
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(hfUrl, request, Map.class);
-        List<?> scores = (List<?>) response.getBody().get("score");
-        return scores != null && !scores.isEmpty() ? Double.valueOf(scores.get(0).toString()) : 0.0;
+        ResponseEntity<List> response = restTemplate.postForEntity(hfUrl, request, List.class);
+
+        List<?> body = response.getBody();
+        if (body != null && !body.isEmpty()) {
+            Object first = body.get(0);
+            if (first instanceof Number) {
+                return ((Number) first).doubleValue();  // when response is [0.8123]
+            } else if (first instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) first;
+                if (map.containsKey("score")) {
+                    return Double.parseDouble(map.get("score").toString()); // when response is [{score:0.8123}]
+                }
+            }
+        }
+        return 0.0;
     }
 
 

@@ -263,6 +263,8 @@ public class ComplaintController {
             return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
         }
     }
+
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getReportDetails(@PathVariable Long id) {
         try {
@@ -271,53 +273,61 @@ public class ComplaintController {
 
             List<Map<String, Object>> attachments = new ArrayList<>();
             if (complaint.getPhotoUrl() != null) {
-                attachments.add(Map.of(
-                        "id", 1,
-                        "name", "photo",
-                        "url", complaint.getPhotoUrl(),
-                        "type", "image"
-                ));
+                Map<String, Object> photo = new HashMap<>();
+                photo.put("id", 1);
+                photo.put("name", "photo");
+                photo.put("url", complaint.getPhotoUrl());
+                photo.put("type", "image");
+                attachments.add(photo);
+            }
+            if (complaint.getVoiceUrl() != null) {
+                Map<String, Object> voice = new HashMap<>();
+                voice.put("id", 2);
+                voice.put("name", "voice");
+                voice.put("url", complaint.getVoiceUrl());
+                voice.put("type", "audio");
+                attachments.add(voice);
+            }
 
-    }
-        if (complaint.getVoiceUrl() != null) {
-        attachments.add(Map.of(
-                "id", 2,
-                "name", "voice",
-                "url", complaint.getVoiceUrl(),
-                "type", "audio"
-        ));
+            List<Map<String, Object>> timeline = new ArrayList<>();
+            Map<String, Object> submitted = new HashMap<>();
+            submitted.put("date", complaint.getCreatedAt() != null ? complaint.getCreatedAt().toLocalDate().toString() : null);
+            submitted.put("action", "Report submitted");
+            submitted.put("by", complaint.getUser() != null ? complaint.getUser().getFullName() : "Unknown");
+            timeline.add(submitted);
+
+            if (complaint.getAssignedTo() != null) {
+                Map<String, Object> assigned = new HashMap<>();
+                assigned.put("date", complaint.getAssignedAt() != null ? complaint.getAssignedAt().toLocalDate().toString() : null);
+                assigned.put("action", "Report assigned");
+                assigned.put("by", complaint.getAssignedTo().getFullName());
+                timeline.add(assigned);
+            }
+
+            // ✅ Replace Map.of() with HashMap
+            Map<String, Object> coords = new HashMap<>();
+            coords.put("lat", complaint.getLatitude());
+            coords.put("lng", complaint.getLongitude());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", "R" + complaint.getId());
+            response.put("title", complaint.getTitle());
+            response.put("description", complaint.getDescription());
+            response.put("location", complaint.getAddress());
+            response.put("coordinates", coords);
+            response.put("attachments", attachments);
+            response.put("timeline", timeline);
+            response.put("priority", complaint.getPriority() != null ? complaint.getPriority().name().toLowerCase() : "normal");
+            response.put("department", complaint.getDepartment() != null ? complaint.getDepartment().getName() : null);
+            response.put("estimatedResolution", complaint.getDueDate() != null ? complaint.getDueDate().toLocalDate().toString() : "N/A");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
     }
 
-    List<Map<String, Object>> timeline = new ArrayList<>();
-        timeline.add(Map.of(
-                "date", complaint.getCreatedAt() != null ? complaint.getCreatedAt().toLocalDate().toString() : null,
-            "action", "Report submitted",
-            "by", complaint.getUser() != null ? complaint.getUser().getFullName() : "Unknown"
-            ));
-        if (complaint.getAssignedTo() != null) {
-        timeline.add(Map.of(
-                "date", complaint.getAssignedAt() != null ? complaint.getAssignedAt().toLocalDate().toString() : null,
-                "action", "Report assigned",
-                "by", complaint.getAssignedTo().getFullName()
-        ));
-    }
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", "R" + complaint.getId());
-        response.put("title", complaint.getTitle());
-        response.put("description", complaint.getDescription());
-        response.put("location", complaint.getAddress());
-        response.put("coordinates", Map.of("lat", complaint.getLatitude(), "lng", complaint.getLongitude()));
-        response.put("attachments", attachments);
-        response.put("timeline", timeline);
-        response.put("priority", complaint.getPriority() != null ? complaint.getPriority().name().toLowerCase() : "normal");
-        response.put("department", complaint.getDepartment() != null ? complaint.getDepartment().getName() : null);
-        response.put("estimatedResolution", complaint.getDueDate() != null ? complaint.getDueDate().toLocalDate().toString() : "N/A");
-
-        return ResponseEntity.ok(response);
-    } catch (Exception e) {
-        return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-    }
-}
 
     // Replace this in ComplaintController.java
     @PutMapping("/{id}/status")
