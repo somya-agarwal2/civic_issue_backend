@@ -11,7 +11,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-
 import java.util.List;
 
 @EnableWebSecurity
@@ -27,18 +26,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))// enable CORS here
-
-                .csrf(csrf -> csrf.disable()) // Disable CSRF
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Enable CORS globally
+                .csrf(csrf -> csrf.disable()) // ✅ Disable CSRF for APIs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/").permitAll()
                         .requestMatchers("/auth/admin-login").permitAll()
-                        .requestMatchers("/whatsapp/**").permitAll()
-                        .requestMatchers("/admin/**").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR","CITIZEN")
-                        .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/whatsapp/").permitAll()
+                        .requestMatchers("/admin/").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR", "CITIZEN")
+                        .requestMatchers("/api/users/").authenticated()
                         .requestMatchers("/api/complaints/create").hasAuthority("CITIZEN")
-                        .requestMatchers("/api/complaints/update-status/**").hasAnyAuthority("SUPER_ADMIN","DEPARTMENT_HEAD","OPERATOR")
-                        .requestMatchers("/**").permitAll()
+                        .requestMatchers("/api/complaints/update-status/").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR")
+                        .requestMatchers("/").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
@@ -50,17 +48,25 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Define the CORS configuration source
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // frontend origin
+
+        // ✅ Add both localhost and Vercel frontend origins
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://civic-sense-admin.vercel.app"
+        ));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+
+        // ✅ Apply to all endpoints
+        source.registerCorsConfiguration("/", configuration);
         return source;
     }
 }
