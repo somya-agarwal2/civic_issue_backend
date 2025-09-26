@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/auth/admin-login").permitAll()
-                        .requestMatchers("/whatsapp/").permitAll()
+                        .requestMatchers("/whatsapp/**").permitAll()
                         .requestMatchers("/admin/").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR", "CITIZEN")
                         .requestMatchers("/api/users/").authenticated()
                         .requestMatchers("/api/complaints/create").hasAuthority("CITIZEN")
