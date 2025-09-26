@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Enable CORS globally
                 .csrf(csrf -> csrf.disable()) // ✅ Disable CSRF for APIs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/auth/admin-login").permitAll()
                         .requestMatchers("/whatsapp/").permitAll()
                         .requestMatchers("/admin/").hasAnyAuthority("SUPER_ADMIN", "DEPARTMENT_HEAD", "OPERATOR", "CITIZEN")
