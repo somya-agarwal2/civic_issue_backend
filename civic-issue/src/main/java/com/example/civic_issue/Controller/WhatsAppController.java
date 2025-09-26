@@ -290,6 +290,13 @@ public class WhatsAppController {
 
         return conn.getInputStream();
     }
+    @PostMapping("/test")
+    public ResponseEntity<String> testMessage() {
+        String xml = "<Response><Message>Hello from CivicSense!</Message></Response>";
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/xml");
+        return new ResponseEntity<>(xml, headers, HttpStatus.OK);
+    }
 
     private MessagingResponse buildMessage(String text) {
         Body body = new Body.Builder(text).build();
